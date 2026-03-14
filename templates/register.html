@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro — ExplorerFrame</title>
+  <link rel="icon" type="image/x-icon" href="/app/app-icon.ico" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">⬡ Explorer<span>Frame</span></a>
+  <div class="nav-links">
+    <a href="/login/">Iniciar sesión</a>
+  </div>
+</nav>
+
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="logo">
+      <h2>⬡ ExplorerFrame</h2>
+      <p>Crear nueva cuenta</p>
+    </div>
+
+    <div class="info-box">
+      <strong>📱 Acceso vía Telegram</strong>
+      El acceso y las descargas de <code>ExplorerFrame.exe</code> se gestionan a través de Telegram.
+      Necesitas tener iniciado el bot <strong>@explorerFrameBot</strong> para recibir tu token de verificación.
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/register/">
+      <div class="form-group">
+        <label for="username">Username o ID de Telegram</label>
+        <input type="text" id="username" name="username"
+               placeholder="@tuusuario o 123456789" required />
+      </div>
+      <div class="form-group">
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" name="password"
+               placeholder="Mínimo 8 caracteres" required minlength="8" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">
+        Continuar →
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      ¿Ya tienes cuenta? <a href="/login/">Inicia sesión</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

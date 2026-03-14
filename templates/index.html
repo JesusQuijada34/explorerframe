@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ExplorerFrame — Workbench</title>
+  <link rel="icon" type="image/x-icon" href="/app/app-icon.ico" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">⬡ Explorer<span>Frame</span></a>
+  <div class="nav-links">
+    <a href="/login/">Iniciar sesión</a>
+    <a href="/register/" class="btn-nav">Registrarse</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">⚡ v1.0 · API REST · Telegram Auth</div>
+  <h1>ExplorerFrame<br/>Workbench</h1>
+  <p>Plataforma de acceso seguro con autenticación de dos factores vía Telegram. Descarga, gestiona y consume la API desde un solo lugar.</p>
+  <div class="hero-actions">
+    <a href="/register/" class="btn btn-primary">🚀 Crear cuenta</a>
+    <a href="/login/" class="btn btn-outline">Iniciar sesión</a>
+  </div>
+
+  <div class="terminal" style="margin-top:3rem;">
+    <div class="terminal-bar">
+      <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+      <span style="margin-left:.5rem;color:var(--muted);font-size:.75rem;">explorerframe ~ api</span>
+    </div>
+    <div class="terminal-body">
+      <div><span class="prompt">$ </span><span class="cmd">curl -H "X-API-Key: &lt;token&gt;" \</span></div>
+      <div style="padding-left:1.5rem"><span class="cmd">/api/v1/telegram/id</span></div>
+      <div class="out">→ 123456789,987654321,112233445</div>
+      <div style="margin-top:.5rem"><span class="prompt">$ </span><span class="acc">200 OK · text/plain</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="features">
+  <div class="feature-card">
+    <div class="feature-icon">🔐</div>
+    <h3>Auth 2FA Telegram</h3>
+    <p>Token de un solo uso enviado a tu bot. Expira en 20 minutos.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">⚡</div>
+    <h3>API REST</h3>
+    <p>Endpoints protegidos por API key. Respuestas limpias en texto plano o JSON.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">📦</div>
+    <h3>ExplorerFrame.exe</h3>
+    <p>Descarga disponible solo para usuarios autenticados.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🗄️</div>
+    <h3>MongoDB</h3>
+    <p>Cuentas y tokens almacenados de forma segura con hashing bcrypt.</p>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verificación — ExplorerFrame</title>
+  <link rel="icon" type="image/x-icon" href="/app/app-icon.ico" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">⬡ Explorer<span>Frame</span></a>
+</nav>
+
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="logo">
+      <h2>🔐 Verificación</h2>
+      <p>
+        {% if mode == 'login' %}Token de inicio de sesión{% else %}Token de registro{% endif %}
+      </p>
+    </div>
+
+    <div class="info-box">
+      <strong>📨 Revisa Telegram</strong>
+      Hemos enviado un token a <strong>{{ username }}</strong> a través de <strong>@explorerFrameBot</strong>.
+      Introdúcelo abajo. Expira en <strong>20 minutos</strong>.
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+      <div class="form-group">
+        <label for="token">Token de verificación</label>
+        <input type="text" id="token" name="token" class="token-input"
+               placeholder="Pega aquí tu token" required autocomplete="off" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">
+        ✓ Verificar
+      </button>
+    </form>
+
+    <div class="auth-footer" style="margin-top:1rem;">
+      ¿No recibiste el token? Asegúrate de haber iniciado
+      <a href="https://t.me/explorerFrameBot" target="_blank">@explorerFrameBot</a>
+      en Telegram.
+    </div>
+  </div>
+</div>
+</body>
+</html>

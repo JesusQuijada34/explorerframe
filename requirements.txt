@@ -1,0 +1,16 @@
+flask
+flask-session
+gunicorn
+pymongo[srv]
+python-dotenv
+requests
+bcrypt
+python-telegram-bot[job-queue]
+apscheduler>=3.10.0
+pytz
+tzlocal
+pillow
+keyboard
+pywin32
+psutil
+numpy

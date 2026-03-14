@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — ExplorerFrame</title>
+  <link rel="icon" type="image/x-icon" href="/app/app-icon.ico" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .tabs { display:flex; gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .tab-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); padding:.4rem 1rem; border-radius:6px;
+      cursor:pointer; font-size:.8rem; font-family:'JetBrains Mono',monospace;
+      transition: all .2s;
+    }
+    .tab-btn.active, .tab-btn:hover { border-color:var(--accent); color:var(--accent2); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .code-block {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius:8px; padding:1.2rem 1.5rem;
+      font-family:'JetBrains Mono',monospace; font-size:.78rem;
+      color: var(--text); overflow-x:auto; white-space:pre; line-height:1.7;
+      position:relative;
+    }
+    .copy-btn {
+      position:absolute; top:.6rem; right:.6rem;
+      background:var(--surface); border:1px solid var(--border);
+      color:var(--muted); padding:.25rem .6rem; border-radius:5px;
+      font-size:.72rem; cursor:pointer; transition:all .2s;
+    }
+    .copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+    .kw  { color:#c792ea; }
+    .str { color:#c3e88d; }
+    .cm  { color:#546e7a; font-style:italic; }
+    .fn  { color:#82aaff; }
+    .var { color:#f78c6c; }
+  </style>
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">⬡ Explorer<span>Frame</span></a>
+  <div class="nav-links">
+    <span style="color:var(--muted);font-size:.82rem;">{{ user.telegram_username }}</span>
+    <a href="/logout/">Cerrar sesión</a>
+  </div>
+</nav>
+
+<div class="dashboard">
+  <div class="dash-header">
+    <h1>Bienvenido, <span>{{ user.telegram_username }}</span></h1>
+    <span style="font-size:.8rem;color:var(--green);">● Sesión activa</span>
+  </div>
+
+  <!-- Info cards -->
+  <div class="dash-grid">
+    <div class="dash-card">
+      <h3>Estado</h3>
+      <div class="value green">● Autenticado</div>
+    </div>
+    <div class="dash-card">
+      <h3>Telegram</h3>
+      <div class="value">{{ user.telegram_username }}</div>
+    </div>
+    <div class="dash-card" style="grid-column:span 2;">
+      <h3>Tu API Key</h3>
+      <div class="value mono" id="apikey">{{ user.api_key }}</div>
+    </div>
+  </div>
+
+  <!-- Endpoints -->
+  <div class="api-section">
+    <h2>📡 Endpoints disponibles</h2>
+    <div class="endpoint-row">
+      <span class="method-badge">GET</span>
+      <span class="endpoint-path">/api/v1/telegram/id</span>
+      <span class="endpoint-desc">IDs de usuarios registrados separadas por comas</span>
+    </div>
+    <div class="endpoint-row">
+      <span class="method-badge">POST</span>
+      <span class="endpoint-path">/api/v1/download/token</span>
+      <span class="endpoint-desc">Genera un token de descarga de un solo uso (10 min)</span>
+    </div>
+    <div class="endpoint-row">
+      <span class="method-badge">GET</span>
+      <span class="endpoint-path">/api/v1/download/status</span>
+      <span class="endpoint-desc">Verifica si ExplorerFrame.exe está disponible</span>
+    </div>
+    <div class="alert alert-info" style="margin-top:.75rem;margin-bottom:0;">
+      Header requerido: <code>X-API-Key: {{ user.api_key }}</code>
+    </div>
+  </div>
+
+  <!-- Scripts de descarga -->
+  <div class="api-section">
+    <h2>⬇ Scripts de descarga</h2>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;">
+      Estos scripts obtienen un token vía API y descargan <code>ExplorerFrame.exe</code> automáticamente.
+      Reemplaza <code>BASE_URL</code> con la URL de tu servidor.
+    </p>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('python', this)">Python</button>
+      <button class="tab-btn" onclick="switchTab('bash', this)">Bash / curl</button>
+      <button class="tab-btn" onclick="switchTab('powershell', this)">PowerShell</button>
+      <button class="tab-btn" onclick="switchTab('node', this)">Node.js</button>
+      <button class="tab-btn" onclick="switchTab('php', this)">PHP</button>
+    </div>
+
+    <!-- Python -->
+    <div class="tab-panel active" id="tab-python">
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="cm"># download_explorerframe.py</span>
+<span class="kw">import</span> requests, os
+
+BASE_URL = <span class="str">"https://tu-servidor.onrender.com"</span>
+API_KEY  = <span class="str">"{{ user.api_key }}"</span>
+
+<span class="cm"># 1. Generar token de descarga</span>
+r = requests.<span class="fn">post</span>(
+    <span class="fn">f</span><span class="str">"{BASE_URL}/api/v1/download/token"</span>,
+    headers={<span class="str">"X-API-Key"</span>: API_KEY},
+    json={<span class="str">"expires_minutes"</span>: <span class="var">10</span>}
+)
+r.<span class="fn">raise_for_status</span>()
+download_url = r.<span class="fn">json</span>()[<span class="str">"download_url"</span>]
+
+<span class="cm"># 2. Descargar el archivo</span>
+dl = requests.<span class="fn">get</span>(download_url, stream=<span class="kw">True</span>)
+dl.<span class="fn">raise_for_status</span>()
+<span class="kw">with</span> <span class="fn">open</span>(<span class="str">"ExplorerFrame.exe"</span>, <span class="str">"wb"</span>) <span class="kw">as</span> f:
+    <span class="kw">for</span> chunk <span class="kw">in</span> dl.<span class="fn">iter_content</span>(<span class="var">8192</span>):
+        f.<span class="fn">write</span>(chunk)
+
+<span class="fn">print</span>(<span class="str">"Descargado:"</span>, os.path.<span class="fn">getsize</span>(<span class="str">"ExplorerFrame.exe"</span>), <span class="str">"bytes"</span>)</div>
+    </div>
+
+    <!-- Bash -->
+    <div class="tab-panel" id="tab-bash">
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="cm">#!/bin/bash</span>
+BASE_URL=<span class="str">"https://tu-servidor.onrender.com"</span>
+API_KEY=<span class="str">"{{ user.api_key }}"</span>
+
+<span class="cm"># 1. Obtener token de descarga</span>
+DOWNLOAD_URL=$(curl -s -X POST <span class="str">"$BASE_URL/api/v1/download/token"</span> \
+  -H <span class="str">"X-API-Key: $API_KEY"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"expires_minutes": 10}'</span> \
+  | python3 -c <span class="str">"import sys,json; print(json.load(sys.stdin)['download_url'])"</span>)
+
+<span class="cm"># 2. Descargar</span>
+curl -L -o ExplorerFrame.exe <span class="str">"$DOWNLOAD_URL"</span>
+echo <span class="str">"Listo: $(du -h ExplorerFrame.exe)"</span></div>
+    </div>
+
+    <!-- PowerShell -->
+    <div class="tab-panel" id="tab-powershell">
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="var">$BASE_URL</span> = <span class="str">"https://tu-servidor.onrender.com"</span>
+<span class="var">$API_KEY</span>  = <span class="str">"{{ user.api_key }}"</span>
+
+<span class="cm"># 1. Obtener token de descarga</span>
+<span class="var">$resp</span> = Invoke-RestMethod -Uri <span class="str">"$BASE_URL/api/v1/download/token"</span> `
+    -Method POST `
+    -Headers @{ <span class="str">"X-API-Key"</span> = <span class="var">$API_KEY</span> } `
+    -ContentType <span class="str">"application/json"</span> `
+    -Body <span class="str">'{"expires_minutes": 10}'</span>
+
+<span class="cm"># 2. Descargar</span>
+Invoke-WebRequest -Uri <span class="var">$resp</span>.download_url -OutFile <span class="str">"ExplorerFrame.exe"</span>
+Write-Host <span class="str">"Descargado:"</span> (Get-Item ExplorerFrame.exe).Length <span class="str">"bytes"</span></div>
+    </div>
+
+    <!-- Node.js -->
+    <div class="tab-panel" id="tab-node">
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="cm">// download.mjs  (Node 18+, fetch nativo)</span>
+<span class="kw">import</span> { writeFileSync } <span class="kw">from</span> <span class="str">"fs"</span>;
+
+<span class="kw">const</span> BASE_URL = <span class="str">"https://tu-servidor.onrender.com"</span>;
+<span class="kw">const</span> API_KEY  = <span class="str">"{{ user.api_key }}"</span>;
+
+<span class="cm">// 1. Obtener token</span>
+<span class="kw">const</span> res  = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="fn">`${BASE_URL}/api/v1/download/token`</span>, {
+  method: <span class="str">"POST"</span>,
+  headers: { <span class="str">"X-API-Key"</span>: API_KEY, <span class="str">"Content-Type"</span>: <span class="str">"application/json"</span> },
+  body: JSON.<span class="fn">stringify</span>({ expires_minutes: <span class="var">10</span> })
+});
+<span class="kw">const</span> { download_url } = <span class="kw">await</span> res.<span class="fn">json</span>();
+
+<span class="cm">// 2. Descargar</span>
+<span class="kw">const</span> dl  = <span class="kw">await</span> <span class="fn">fetch</span>(download_url);
+<span class="kw">const</span> buf = <span class="kw">await</span> dl.<span class="fn">arrayBuffer</span>();
+<span class="fn">writeFileSync</span>(<span class="str">"ExplorerFrame.exe"</span>, Buffer.<span class="fn">from</span>(buf));
+console.<span class="fn">log</span>(<span class="str">"Descargado:"</span>, buf.byteLength, <span class="str">"bytes"</span>);</div>
+    </div>
+
+    <!-- PHP -->
+    <div class="tab-panel" id="tab-php">
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="cm">&lt;?php</span>
+<span class="var">$base_url</span> = <span class="str">"https://tu-servidor.onrender.com"</span>;
+<span class="var">$api_key</span>  = <span class="str">"{{ user.api_key }}"</span>;
+
+<span class="cm">// 1. Obtener token de descarga</span>
+<span class="var">$ch</span> = curl_init(<span class="str">"$base_url/api/v1/download/token"</span>);
+curl_setopt_array(<span class="var">$ch</span>, [
+    CURLOPT_POST           => <span class="kw">true</span>,
+    CURLOPT_RETURNTRANSFER => <span class="kw">true</span>,
+    CURLOPT_HTTPHEADER     => [<span class="str">"X-API-Key: $api_key"</span>, <span class="str">"Content-Type: application/json"</span>],
+    CURLOPT_POSTFIELDS     => <span class="str">'{"expires_minutes":10}'</span>,
+]);
+<span class="var">$data</span> = json_decode(curl_exec(<span class="var">$ch</span>), <span class="kw">true</span>);
+curl_close(<span class="var">$ch</span>);
+
+<span class="cm">// 2. Descargar</span>
+<span class="var">$ch2</span> = curl_init(<span class="var">$data</span>[<span class="str">"download_url"</span>]);
+curl_setopt_array(<span class="var">$ch2</span>, [CURLOPT_RETURNTRANSFER => <span class="kw">true</span>, CURLOPT_FOLLOWLOCATION => <span class="kw">true</span>]);
+file_put_contents(<span class="str">"ExplorerFrame.exe"</span>, curl_exec(<span class="var">$ch2</span>));
+curl_close(<span class="var">$ch2</span>);
+echo <span class="str">"Descargado\n"</span>;</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+function copyCode(btn) {
+  const block = btn.parentElement;
+  const text = block.innerText.replace('copiar\n', '').replace('copiar', '');
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    btn.textContent = '✓ copiado';
+    setTimeout(() => btn.textContent = 'copiar', 2000);
+  });
+}
+</script>
+</body>
+</html>
