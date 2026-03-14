@@ -11,6 +11,6 @@ pytz
 tzlocal
 pillow
 keyboard
-pywin32
+#pywin32
 psutil
 numpy
