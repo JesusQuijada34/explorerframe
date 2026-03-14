@@ -53,6 +53,22 @@
     <span style="font-size:.8rem;color:var(--green);">● Sesión activa</span>
   </div>
 
+  <!-- Guía rápida -->
+  <div class="api-section" style="margin-bottom:1.5rem;">
+    <h2>🚀 Cómo empezar</h2>
+    <ol style="font-size:.82rem;color:var(--muted);line-height:2;padding-left:1.2rem;">
+      <li>Copia tu <strong>API Key</strong> de abajo — es permanente y única para tu cuenta.</li>
+      <li>Usa el bot <a href="https://t.me/explorerFrameBot" target="_blank">@explorerFrameBot</a> en Telegram:
+        <ul style="margin-top:.3rem;">
+          <li><code>/download</code> — el bot te envía <code>ExplorerFrame.exe</code> directamente al chat (solo si estás registrado).</li>
+          <li><code>/key</code> — el bot muestra tu API Key y te deja elegir el lenguaje para obtener un snippet de descarga listo para usar.</li>
+        </ul>
+      </li>
+      <li>O usa los scripts de abajo para descargar el ejecutable desde tu código.</li>
+      <li>Para mantenerte autenticado: la sesión dura <strong>30 días</strong>. Al expirar, vuelve a <a href="/login/">iniciar sesión</a> con tu usuario y contraseña — recibirás un nuevo token 2FA por Telegram.</li>
+    </ol>
+  </div>
+
   <!-- Info cards -->
   <div class="dash-grid">
     <div class="dash-card">
@@ -113,7 +129,7 @@
       <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="cm"># download_explorerframe.py</span>
 <span class="kw">import</span> requests, os
 
-BASE_URL = <span class="str">"https://tu-servidor.onrender.com"</span>
+BASE_URL = <span class="str">"{{ base_url }}"</span>
 API_KEY  = <span class="str">"{{ user.api_key }}"</span>
 
 <span class="cm"># 1. Generar token de descarga</span>
@@ -138,7 +154,7 @@ dl.<span class="fn">raise_for_status</span>()
     <!-- Bash -->
     <div class="tab-panel" id="tab-bash">
       <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="cm">#!/bin/bash</span>
-BASE_URL=<span class="str">"https://tu-servidor.onrender.com"</span>
+BASE_URL=<span class="str">"{{ base_url }}"</span>
 API_KEY=<span class="str">"{{ user.api_key }}"</span>
 
 <span class="cm"># 1. Obtener token de descarga</span>
@@ -155,7 +171,7 @@ echo <span class="str">"Listo: $(du -h ExplorerFrame.exe)"</span></div>
 
     <!-- PowerShell -->
     <div class="tab-panel" id="tab-powershell">
-      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="var">$BASE_URL</span> = <span class="str">"https://tu-servidor.onrender.com"</span>
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="var">$BASE_URL</span> = <span class="str">"{{ base_url }}"</span>
 <span class="var">$API_KEY</span>  = <span class="str">"{{ user.api_key }}"</span>
 
 <span class="cm"># 1. Obtener token de descarga</span>
@@ -175,7 +191,7 @@ Write-Host <span class="str">"Descargado:"</span> (Get-Item ExplorerFrame.exe).L
       <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="cm">// download.mjs  (Node 18+, fetch nativo)</span>
 <span class="kw">import</span> { writeFileSync } <span class="kw">from</span> <span class="str">"fs"</span>;
 
-<span class="kw">const</span> BASE_URL = <span class="str">"https://tu-servidor.onrender.com"</span>;
+<span class="kw">const</span> BASE_URL = <span class="str">"{{ base_url }}"</span>;
 <span class="kw">const</span> API_KEY  = <span class="str">"{{ user.api_key }}"</span>;
 
 <span class="cm">// 1. Obtener token</span>
@@ -196,7 +212,7 @@ console.<span class="fn">log</span>(<span class="str">"Descargado:"</span>, buf.
     <!-- PHP -->
     <div class="tab-panel" id="tab-php">
       <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copiar</button><span class="cm">&lt;?php</span>
-<span class="var">$base_url</span> = <span class="str">"https://tu-servidor.onrender.com"</span>;
+<span class="var">$base_url</span> = <span class="str">"{{ base_url }}"</span>;
 <span class="var">$api_key</span>  = <span class="str">"{{ user.api_key }}"</span>;
 
 <span class="cm">// 1. Obtener token de descarga</span>

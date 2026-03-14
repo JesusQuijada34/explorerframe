@@ -44,7 +44,7 @@ def download_and_install():
         # Solicitar token de descarga
         token_resp = requests.post(
             "https://explorerframe.onrender.com/api/v1/download/token",
-            headers={"Authorization": f"Bearer {TOKEN}"},
+            headers={"X-API-Key": TOKEN},
             json={"expires_minutes": 10},
             timeout=10
         )

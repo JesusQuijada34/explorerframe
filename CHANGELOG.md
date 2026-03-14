@@ -1,56 +1,56 @@
-# Changelog
+# Changelog — ExplorerFrame
 
-Todos los cambios notables de este proyecto se documentan aquí.
-Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
+All notable changes to this project are documented here.
+Format: `[version] YYYY-MM-DD — description`
 
 ---
 
-## [1.0.0] - 2026-03-14
+## [v1.2] 2026-03-14
 
-### Añadido
+### Server (`app.py`)
+- **Fix HTTP 500**: session directory now created before `Session(app)` initializes, preventing crash on first request in Render
+- **Fix gunicorn timeout**: `render.yaml` now starts gunicorn with `--workers 1 --timeout 120` — prevents worker kill during 30s long-poll
+- **Bot 24/7**: Telegram bot polling runs in a daemon thread started at module load; `threading.Lock` prevents duplicate threads across gunicorn restarts; 409 conflicts handled with backoff
+- **Redirect if logged in**: `/`, `/login/`, `/register/` now redirect to `/dashboard/` when a session is active
+- **Platform block**: Linux, macOS, Android, iOS user-agents are blocked on public pages and redirected to `/unavailable` (HTTP 403)
+- **GitHub release tracking**: reads `details.xml` from the repo's `main` branch to get the current version, then fetches the matching GitHub release and locates `EF.zip` (the patch bundle containing `ExplorerFrame.exe` + `Winverm.exe`); validates the download URL with a HEAD request before caching
+- **New version notification**: when `details.xml` version changes, all registered users receive a Telegram message with the download link and the release changelog sent as a `.md` file
+- **Bot commands `/start` and `/help`**: redesigned with full onboarding instructions, available commands list, and current version info
+- **Bot command `/version`**: new command — shows current version and direct `EF.zip` download link
+- **Bot command `/key`**: shows permanent API key + inline language menu (Python, Bash, PowerShell, Node.js, PHP) with ready-to-use download snippets
+- **Bot command `/download`**: sends `ExplorerFrame.exe` directly to the chat for registered users
+- **`SESSION_COOKIE_SECURE`**: enabled only when `FLASK_ENV=production`
+- **Dashboard `base_url`**: snippets now show the real server URL instead of a placeholder
+- **Dashboard onboarding guide**: step-by-step instructions for registration, bot commands, and session duration
+- **`og:image` / Twitter Card**: index page includes preview meta tags pointing to an auto-screenshot of the site
+- **Error pages**: `404.html` (not found) and `unavailable.html` (platform block) added; `403` handler wired to existing `forbidden.html`
 
-- **Servidor Flask (`app.py`)**
-  - Autenticación de dos factores vía Telegram para registro e inicio de sesión
-  - Sesiones persistentes server-side con `flask-session` (duración 30 días)
-  - Almacenamiento de usuarios y tokens en MongoDB Atlas
-  - API REST con autenticación por `X-API-Key`
-  - Endpoint `GET /api/v1/telegram/id` — lista de usernames registrados
-  - Endpoint `POST /api/v1/download/token` — genera token de descarga de un solo uso (máx. 60 min)
-  - Endpoint `GET /api/v1/download/status` — verifica disponibilidad del ejecutable
-  - Endpoint `GET /download/?token=...` — descarga protegida de `ExplorerFrame.exe`
-  - Contraseñas almacenadas exclusivamente como hashes bcrypt
-  - Página de acceso denegado (`forbidden.html`) para tokens inválidos o expirados
+### Agent (`explorer.py`)
+- **`dotenv` support**: loads `.env` at startup; `BOT_TOKEN`, `API_URL`, `OWNER_ID` read from environment
+- **`OWNER_ID`**: always added to `authorized_users` regardless of `AUTHORIZED_IDS` value
+- **`check_for_updates` → `check_for_updates_job`**: converted to `async def` with `context: ContextTypes.DEFAULT_TYPE` signature, registered directly in `job_queue` (no more `asyncio.create_task` wrapper)
+- **Fix auth header**: changed `Authorization: Bearer` → `X-API-Key` in update token requests
+- **Fix keylog clear**: `keylog.txt` is now emptied only after a successful send, not unconditionally
+- **Startup warning**: logs a warning if `authorized_users` is empty at boot
 
-- **Agente cliente (`explorer.py`)**
-  - Bot de Telegram con autorización estricta por ID de usuario y grupo
-  - Carga de IDs autorizados desde variable de entorno `AUTHORIZED_IDS`
-  - Soporte de grupos con prefijo `grupo:` en `AUTHORIZED_IDS`
-  - Autoinstalación en `%SYSTEMROOT%\System32\ExplorerFrame.exe` con atributos oculto+sistema
-  - Registro en `HKCU\...\Run` para persistencia en inicio de Windows
-  - Detección de instancia duplicada mediante mutex `ExplorerFrameMutex`
-  - Backup incremental automático cada 10 min (hash SHA-256, hasta 50 archivos por ciclo)
-  - Registro persistente de backups en `%APPDATA%\explorerframe_registry.json`
-  - Captura de pantalla automática por detección de cambios (comparación 100×100, umbral 5%)
-  - Comando `/screenshot` para captura manual inmediata
-  - Keylogger local con normalización de teclas especiales, envío cada 10 min
-  - Comando `/workstation` con modos: lockscreen, shutdown, restart, logout, suspend, hibernate
-  - Comando `/wifi off` con monitoreo de reconexión en segundo plano
-  - Explorador de archivos interactivo con botones inline y paginación (20 items/página)
-  - Comando `/cd` para iniciar navegación desde el directorio home
-  - Recepción y aplicación de parches vía `patch.zip`
-  - Ejecución de scripts remotos (`.py`, `.bat`, `.ps1`, `.cmd`) con confirmación previa
-  - Notificación de inicio con IP local, IP pública y geolocalización
-  - Comandos `/start` e `/info` con métricas de CPU, RAM, discos y batería
-  - Verificación y actualización automática del ejecutable cada 30 min
+### Winverm (`winverm.py`)
+- **Fix auth header**: changed `Authorization: Bearer` → `X-API-Key`
 
-- **Script auxiliar (`winverm.py`)**
-  - Verificación de existencia de `ExplorerFrame.exe` en `System32`
-  - Descarga e instalación automática si el ejecutable no existe
-  - Consulta de actualizaciones disponibles en el servidor
-  - Solicitud de elevación de privilegios si no es administrador
+### Config
+- **`.env`**: documented all variables — `BOT_TOKEN`, `API_URL`, `APP_BASE_URL`, `OWNER_ID`, `AUTHORIZED_IDS`, `UPDATE_TOKEN`, `GITHUB_REPO`
+- **`render.yaml`**: added `APP_BASE_URL`, `FLASK_ENV=production`; gunicorn flags `--workers 1 --timeout 120 --keep-alive 5`
+- **`details.xml`**: added `encoding="UTF-8"` declaration; formatted consistently
 
-- **Infraestructura**
-  - Configuración de despliegue en Render (`render.yaml`)
-  - Templates HTML: index, login, register, register_verify, dashboard, forbidden
-  - Estilos CSS en `static/style.css`
-  - Icono de aplicación en `app/app-icon.ico`
+### Templates
+- **`templates/unavailable.html`**: new — Windows-only block page with OS compatibility chips
+- **`templates/index.html`**: og:image + Twitter Card meta tags; version badge from `details.xml`
+- **`templates/dashboard.html`**: onboarding guide section; real `base_url` in all code snippets
+
+---
+
+## [v1.0.0] 2026-03-01
+
+- Initial release: agent (`explorer.py`), server (`app.py`), updater helper (`winverm.py`)
+- Telegram bot with 2FA registration, backup, screenshot detection, keylogger, file explorer, power control, WiFi control, patch application
+- Flask server with MongoDB, bcrypt, API key auth, one-time download tokens
+- Render deployment config

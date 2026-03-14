@@ -9,7 +9,7 @@ property-based tests con `hypothesis` para las 8 propiedades de corrección.
 
 ## Tareas
 
-- [~] 1. Extraer funciones puras para autorización y parsing
+- [ ] 1. Extraer funciones puras para autorización y parsing
   - [ ] 1.1 Extraer `parse_authorized_ids(ids_str)` de `fetch_authorized_ids()` en `explorer.py`
     - Debe retornar `(set[int], set[int])` — (usuarios, grupos)
     - Manejar cadena vacía retornando dos conjuntos vacíos
