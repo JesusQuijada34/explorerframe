@@ -9,7 +9,14 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 from pymongo import MongoClient
 
-client = MongoClient(os.getenv("MONGO_URI"))
+client = MongoClient(
+    os.getenv("MONGO_URI"),
+    tlsAllowInvalidCertificates=True,  # Permitir certificados inválidos (Render issue)
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=10000,
+    socketTimeoutMS=10000,
+    retryWrites=False
+)
 db = client["explorerframe"]
 oauth_apps = db["oauth_apps"]
 oauth_codes = db["oauth_codes"]

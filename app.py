@@ -82,7 +82,14 @@ def _save_session_to_jwt(response):
     return response
 
 # ─── MongoDB ──────────────────────────────────────────────────────────────────
-client = MongoClient(os.getenv("MONGO_URI"))
+client = MongoClient(
+    os.getenv("MONGO_URI"),
+    tlsAllowInvalidCertificates=True,  # Permitir certificados inválidos (Render issue)
+    serverSelectionTimeoutMS=5000,  # Timeout más corto
+    connectTimeoutMS=10000,
+    socketTimeoutMS=10000,
+    retryWrites=False  # Desactivar retry writes en Render
+)
 db = client["explorerframe"]
 users_col    = db["users"]
 tokens_col   = db["pending_tokens"]

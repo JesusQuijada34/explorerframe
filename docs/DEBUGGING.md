@@ -33,6 +33,19 @@ Busca líneas como:
 
 ## 3. Errores Comunes
 
+### Error: "SSL handshake failed" / "tlsv1 alert internal error"
+**Causa**: Problema de SSL/TLS con MongoDB Atlas en Render
+**Solución**: Ya está configurado en `app.py` y `oauth.py` con:
+```python
+tlsAllowInvalidCertificates=True
+tlsInsecure=True
+```
+
+**Si aún falla:**
+1. Ejecuta: `python test_mongodb.py`
+2. Verifica que MongoDB Atlas esté activo
+3. Intenta desde otra red (puede ser firewall)
+
 ### Error: "name 'datetime' is not defined"
 **Causa**: Falta importar `datetime` en `oauth.py`
 **Solución**: Verificar que los imports estén correctos
@@ -92,17 +105,19 @@ Esto mostrará todos los errores mientras pruebas.
 
 ## 7. Verificar Conexión a MongoDB
 
-```python
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
+Ejecuta este script para probar la conexión:
 
-load_dotenv()
-client = MongoClient(os.getenv("MONGO_URI"))
-db = client["explorerframe"]
-print("✓ Conectado a MongoDB")
-print("Colecciones:", db.list_collection_names())
+```bash
+python test_mongodb.py
 ```
+
+Esto probará diferentes configuraciones de SSL y te dirá cuál funciona.
+
+Si todo falla, verifica:
+1. `MONGO_URI` en `.env` es correcto
+2. MongoDB Atlas está activo
+3. Tu IP está en la whitelist de MongoDB Atlas
+4. No hay firewall bloqueando la conexión
 
 ## 8. Verificar JWT
 
