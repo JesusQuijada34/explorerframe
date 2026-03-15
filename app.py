@@ -49,28 +49,36 @@ def _decode_session(token):
 @app.before_request
 def _load_session_from_jwt():
     """Carga la sesión desde JWT en la cookie."""
-    token = request.cookies.get("session")
-    if token:
-        data = _decode_session(token)
-        if data:
-            # Copiar datos al objeto session de Flask
-            for key, value in data.items():
-                if key not in ("exp", "iat"):
-                    session[key] = value
+    try:
+        token = request.cookies.get("session")
+        if token:
+            data = _decode_session(token)
+            if data:
+                # Copiar datos al objeto session de Flask
+                for key, value in data.items():
+                    if key not in ("exp", "iat"):
+                        session[key] = value
+    except Exception as e:
+        import traceback
+        print(f"[SESSION LOAD ERROR] {str(e)}\n{traceback.format_exc()}")
 
 @app.after_request
 def _save_session_to_jwt(response):
     """Guarda la sesión en JWT en la cookie."""
-    if session.modified or session:
-        token = _encode_session(dict(session))
-        response.set_cookie(
-            "session",
-            token,
-            max_age=30*24*60*60,  # 30 días
-            httponly=True,
-            samesite="Lax",
-            secure=os.getenv("FLASK_ENV") == "production"
-        )
+    try:
+        if session.modified or session:
+            token = _encode_session(dict(session))
+            response.set_cookie(
+                "session",
+                token,
+                max_age=30*24*60*60,  # 30 días
+                httponly=True,
+                samesite="Lax",
+                secure=os.getenv("FLASK_ENV") == "production"
+            )
+    except Exception as e:
+        import traceback
+        print(f"[SESSION SAVE ERROR] {str(e)}\n{traceback.format_exc()}")
     return response
 
 # ─── MongoDB ──────────────────────────────────────────────────────────────────
@@ -249,37 +257,43 @@ def register():
     if request.method == "GET":
         return render_template("register.html")
 
-    username = request.form.get("username", "").strip()
-    password = request.form.get("password", "").strip()
+    try:
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
 
-    if not username or not password:
-        return render_template("register.html", error="Completa todos los campos.")
+        if not username or not password:
+            return render_template("register.html", error="Completa todos los campos.")
 
-    if users_col.find_one({"telegram_username": username}):
-        return render_template("register.html", error="Este usuario ya está registrado.")
+        if users_col.find_one({"telegram_username": username}):
+            return render_template("register.html", error="Este usuario ya está registrado.")
 
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    token   = generate_token()
-    expires = utcnow() + timedelta(minutes=20)
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        token   = generate_token()
+        expires = utcnow() + timedelta(minutes=20)
 
-    tokens_col.delete_many({"telegram_username": username})
-    tokens_col.insert_one({
-        "telegram_username": username,
-        "token": token,
-        "password_hash": hashed,
-        "expires": expires,
-        "type": "register"
-    })
+        tokens_col.delete_many({"telegram_username": username})
+        tokens_col.insert_one({
+            "telegram_username": username,
+            "token": token,
+            "password_hash": hashed,
+            "expires": expires,
+            "type": "register"
+        })
 
-    chat_id = username if username.lstrip("-").isdigit() else username
-    send_telegram_message(chat_id,
-        f"🔐 <b>ExplorerFrame Auth</b>\n\n"
-        f"Tu token de verificación:\n\n<code>{token}</code>\n\n"
-        f"⏳ Expira en <b>20 minutos</b>."
-    )
+        chat_id = username if username.lstrip("-").isdigit() else username
+        send_telegram_message(chat_id,
+            f"🔐 <b>ExplorerFrame Auth</b>\n\n"
+            f"Tu token de verificación:\n\n<code>{token}</code>\n\n"
+            f"⏳ Expira en <b>20 minutos</b>."
+        )
 
-    session["pending_register"] = username
-    return redirect(url_for("register_verify"))
+        session["pending_register"] = username
+        return redirect(url_for("register_verify"))
+    except Exception as e:
+        import traceback
+        error_msg = f"Error en registro: {str(e)}"
+        print(f"[REGISTER ERROR] {error_msg}\n{traceback.format_exc()}")
+        return render_template("register.html", error=error_msg), 500
 
 @app.route("/register/verify/", methods=["GET", "POST"])
 def register_verify():
@@ -290,29 +304,35 @@ def register_verify():
     if request.method == "GET":
         return render_template("register_verify.html", username=username)
 
-    token_input = request.form.get("token", "").strip()
-    record = tokens_col.find_one({"telegram_username": username, "type": "register"})
+    try:
+        token_input = request.form.get("token", "").strip()
+        record = tokens_col.find_one({"telegram_username": username, "type": "register"})
 
-    if not record:
-        return render_template("register_verify.html", username=username, error="No hay token pendiente.")
-    if utcnow() > record["expires"]:
+        if not record:
+            return render_template("register_verify.html", username=username, error="No hay token pendiente.")
+        if utcnow() > record["expires"]:
+            tokens_col.delete_one({"_id": record["_id"]})
+            return render_template("register_verify.html", username=username, error="Token expirado. Vuelve a registrarte.")
+        if token_input != record["token"]:
+            return render_template("register_verify.html", username=username, error="Token incorrecto.")
+
+        api_key = secrets.token_hex(32)
+        users_col.insert_one({
+            "telegram_username": username,
+            "password_hash": record["password_hash"],
+            "api_key": api_key,
+            "created_at": utcnow()
+        })
         tokens_col.delete_one({"_id": record["_id"]})
-        return render_template("register_verify.html", username=username, error="Token expirado. Vuelve a registrarte.")
-    if token_input != record["token"]:
-        return render_template("register_verify.html", username=username, error="Token incorrecto.")
-
-    api_key = secrets.token_hex(32)
-    users_col.insert_one({
-        "telegram_username": username,
-        "password_hash": record["password_hash"],
-        "api_key": api_key,
-        "created_at": utcnow()
-    })
-    tokens_col.delete_one({"_id": record["_id"]})
-    session.pop("pending_register", None)
-    session.permanent = True
-    session["user"] = username
-    return redirect(url_for("dashboard"))
+        session.pop("pending_register", None)
+        session.permanent = True
+        session["user"] = username
+        return redirect(url_for("dashboard"))
+    except Exception as e:
+        import traceback
+        error_msg = f"Error en verificación: {str(e)}"
+        print(f"[REGISTER_VERIFY ERROR] {error_msg}\n{traceback.format_exc()}")
+        return render_template("register_verify.html", username=username, error=error_msg), 500
 
 @app.route("/login/", methods=["GET", "POST"])
 def login():
@@ -323,27 +343,33 @@ def login():
     if request.method == "GET":
         return render_template("login.html")
 
-    username = request.form.get("username", "").strip()
-    password = request.form.get("password", "").strip()
+    try:
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
 
-    user = users_col.find_one({"telegram_username": username})
-    if not user or not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
-        return render_template("login.html", error="Credenciales incorrectas.")
+        user = users_col.find_one({"telegram_username": username})
+        if not user or not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+            return render_template("login.html", error="Credenciales incorrectas.")
 
-    token   = generate_token()
-    expires = utcnow() + timedelta(minutes=20)
-    tokens_col.delete_many({"telegram_username": username, "type": "login"})
-    tokens_col.insert_one({"telegram_username": username, "token": token, "expires": expires, "type": "login"})
+        token   = generate_token()
+        expires = utcnow() + timedelta(minutes=20)
+        tokens_col.delete_many({"telegram_username": username, "type": "login"})
+        tokens_col.insert_one({"telegram_username": username, "token": token, "expires": expires, "type": "login"})
 
-    chat_id = username if username.lstrip("-").isdigit() else username
-    send_telegram_message(chat_id,
-        f"🔐 <b>ExplorerFrame Login</b>\n\n"
-        f"Token de inicio de sesión:\n\n<code>{token}</code>\n\n"
-        f"⏳ Expira en <b>20 minutos</b>."
-    )
+        chat_id = username if username.lstrip("-").isdigit() else username
+        send_telegram_message(chat_id,
+            f"🔐 <b>ExplorerFrame Login</b>\n\n"
+            f"Token de inicio de sesión:\n\n<code>{token}</code>\n\n"
+            f"⏳ Expira en <b>20 minutos</b>."
+        )
 
-    session["pending_login"] = username
-    return redirect(url_for("login_verify"))
+        session["pending_login"] = username
+        return redirect(url_for("login_verify"))
+    except Exception as e:
+        import traceback
+        error_msg = f"Error en login: {str(e)}"
+        print(f"[LOGIN ERROR] {error_msg}\n{traceback.format_exc()}")
+        return render_template("login.html", error=error_msg), 500
 
 @app.route("/login/verify/", methods=["GET", "POST"])
 def login_verify():
@@ -354,19 +380,25 @@ def login_verify():
     if request.method == "GET":
         return render_template("register_verify.html", username=username, mode="login")
 
-    token_input = request.form.get("token", "").strip()
-    record = tokens_col.find_one({"telegram_username": username, "type": "login"})
+    try:
+        token_input = request.form.get("token", "").strip()
+        record = tokens_col.find_one({"telegram_username": username, "type": "login"})
 
-    if not record or utcnow() > record["expires"]:
-        return render_template("register_verify.html", username=username, mode="login", error="Token expirado o inválido.")
-    if token_input != record["token"]:
-        return render_template("register_verify.html", username=username, mode="login", error="Token incorrecto.")
+        if not record or utcnow() > record["expires"]:
+            return render_template("register_verify.html", username=username, mode="login", error="Token expirado o inválido.")
+        if token_input != record["token"]:
+            return render_template("register_verify.html", username=username, mode="login", error="Token incorrecto.")
 
-    tokens_col.delete_one({"_id": record["_id"]})
-    session.pop("pending_login", None)
-    session.permanent = True
-    session["user"] = username
-    return redirect(url_for("dashboard"))
+        tokens_col.delete_one({"_id": record["_id"]})
+        session.pop("pending_login", None)
+        session.permanent = True
+        session["user"] = username
+        return redirect(url_for("dashboard"))
+    except Exception as e:
+        import traceback
+        error_msg = f"Error en verificación: {str(e)}"
+        print(f"[LOGIN_VERIFY ERROR] {error_msg}\n{traceback.format_exc()}")
+        return render_template("register_verify.html", username=username, mode="login", error=error_msg), 500
 
 @app.route("/dashboard/")
 @login_required
@@ -911,7 +943,11 @@ def method_not_allowed(e):
 
 @app.errorhandler(500)
 def internal_error(e):
-    return render_template("500.html"), 500
+    import traceback
+    error_msg = str(e)
+    error_trace = traceback.format_exc()
+    print(f"[ERROR 500] {error_msg}\n{error_trace}")
+    return render_template("500.html", error=error_msg, trace=error_trace), 500
 
 # ─── Run ──────────────────────────────────────────────────────────────────────
 

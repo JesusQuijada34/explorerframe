@@ -27,6 +27,22 @@
       0%, 100% { opacity: 1; transform: scale(1); }
       50%       { opacity: .4; transform: scale(.7); }
     }
+    .error-details {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.5rem; margin-top: 2rem;
+      max-width: 600px; text-align: left;
+    }
+    .error-details h3 { margin: 0 0 0.75rem 0; font-size: 0.95rem; color: var(--red); }
+    .error-details code {
+      display: block; background: var(--surface); padding: 1rem;
+      border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem; color: var(--muted); overflow-x: auto;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .error-trace {
+      margin-top: 1rem; font-size: 0.75rem; color: var(--muted);
+      max-height: 300px; overflow-y: auto;
+    }
   </style>
 </head>
 <body>
@@ -40,7 +56,21 @@
     Algo salió mal en el servidor. El error fue registrado automáticamente.
     Intenta de nuevo en unos momentos.
   </p>
-  <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
+  
+  {% if error %}
+  <div class="error-details">
+    <h3>📋 Detalles del error:</h3>
+    <code>{{ error }}</code>
+    {% if trace %}
+    <div class="error-trace">
+      <strong>Stack trace:</strong>
+      <code>{{ trace }}</code>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+  
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:2rem;">
     <a href="/" class="btn btn-primary">← Inicio</a>
     <a href="javascript:location.reload()" class="btn btn-outline">Reintentar</a>
   </div>
