@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autenticando...</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .container {
+      text-align: center;
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      border: 4px solid #e5e7eb;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    h1 {
+      color: #1f2937;
+      font-size: 24px;
+      margin: 0;
+    }
+
+    p {
+      color: #6b7280;
+      margin-top: 10px;
+    }
+
+    .error {
+      color: #dc2626;
+      background: #fee2e2;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 20px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <h1>Autenticando...</h1>
+    <p>Por favor espera mientras completamos tu autenticación.</p>
+    <div class="error" id="error"></div>
+  </div>
+
+  <script>
+    /**
+     * Este script maneja el callback del OAuth
+     * 
+     * Flujo:
+     * 1. ExplorerFrame redirige aquí con ?code=xxx&state=yyy
+     * 2. Guardamos el código en sessionStorage
+     * 3. Redirigimos a la página principal
+     * 4. La página principal intercambia el código por un token
+     */
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+    const error = params.get('error');
+    const errorDescription = params.get('error_description');
+
+    if (error) {
+      // Error en la autorización
+      document.getElementById('error').textContent = `Error: ${error} - ${errorDescription || ''}`;
+      document.getElementById('error').style.display = 'block';
+      
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 3000);
+    } else if (!code) {
+      // No hay código
+      document.getElementById('error').textContent = 'Error: No authorization code received';
+      document.getElementById('error').style.display = 'block';
+      
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 3000);
+    } else {
+      // Guardar código y estado en sessionStorage
+      sessionStorage.setItem('oauth_code', code);
+      sessionStorage.setItem('oauth_state', state);
+      
+      // Redirigir a la página principal
+      // La página principal manejará el intercambio de código por token
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>

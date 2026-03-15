@@ -82,18 +82,57 @@ def _save_session_to_jwt(response):
     return response
 
 # ─── MongoDB ──────────────────────────────────────────────────────────────────
-client = MongoClient(
-    os.getenv("MONGO_URI"),
-    tlsAllowInvalidCertificates=True,  # Permitir certificados inválidos (Render issue)
-    serverSelectionTimeoutMS=5000,  # Timeout más corto
-    connectTimeoutMS=10000,
-    socketTimeoutMS=10000,
-    retryWrites=False  # Desactivar retry writes en Render
-)
-db = client["explorerframe"]
-users_col    = db["users"]
-tokens_col   = db["pending_tokens"]
-dl_tokens_col = db["download_tokens"]   # tokens de descarga de un solo uso
+# Conexión lazy: se conecta solo cuando se necesita (importante para Render)
+_mongo_client = None
+
+def get_mongo_db():
+    """Obtiene la conexión a MongoDB (lazy initialization)"""
+    global _mongo_client
+    if _mongo_client is None:
+        try:
+            _mongo_client = MongoClient(
+                os.getenv("MONGO_URI"),
+                tlsAllowInvalidCertificates=True,
+                serverSelectionTimeoutMS=30000,
+                connectTimeoutMS=30000,
+                socketTimeoutMS=30000,
+                maxPoolSize=10,
+                minPoolSize=1,
+                retryWrites=False,
+                maxIdleTimeMS=45000
+            )
+            # Verificar que funciona
+            _mongo_client.admin.command('ping')
+        except Exception as e:
+            print(f"[MONGO ERROR] {str(e)}")
+            _mongo_client = None
+            raise
+    return _mongo_client["explorerframe"]
+
+# Lazy properties
+@property
+def users_col():
+    return get_mongo_db()["users"]
+
+@property
+def tokens_col():
+    return get_mongo_db()["pending_tokens"]
+
+@property
+def dl_tokens_col():
+    return get_mongo_db()["download_tokens"]
+
+# Para compatibilidad, crear referencias que se evalúan en tiempo de ejecución
+class LazyCollection:
+    def __init__(self, collection_name):
+        self.collection_name = collection_name
+    
+    def __getattr__(self, name):
+        return getattr(get_mongo_db()[self.collection_name], name)
+
+users_col = LazyCollection("users")
+tokens_col = LazyCollection("pending_tokens")
+dl_tokens_col = LazyCollection("download_tokens")
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 GITHUB_REPO = os.getenv("GITHUB_REPO", "")   # "usuario/repo"
@@ -883,6 +922,44 @@ def dev_app_detail(client_id):
     if request.method == "DELETE":
         oauth_delete_app(client_id, session["user"])
         return jsonify({"status": "deleted"})
+
+# ─── OAuth Token Exchange (para sitios estáticos) ────────────────────────────
+
+@app.route("/api/oauth/token", methods=["POST"])
+def api_oauth_token():
+    """
+    Intercambia código de autorización por access token.
+    Endpoint para sitios estáticos (GitHub Pages, etc).
+    
+    Body JSON:
+    {
+      "code": "authorization_code",
+      "client_id": "app_xxx",
+      "client_secret": "secret_yyy",
+      "redirect_uri": "https://example.com/callback"
+    }
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        
+        code = data.get("code")
+        client_id = data.get("client_id")
+        client_secret = data.get("client_secret")
+        redirect_uri = data.get("redirect_uri")
+        
+        if not all([code, client_id, client_secret, redirect_uri]):
+            return jsonify({"error": "missing_parameters"}), 400
+        
+        # Intercambiar código por token
+        result = exchange_code_for_token(client_id, client_secret, code, redirect_uri)
+        if not result:
+            return jsonify({"error": "invalid_grant"}), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        print(f"[API_OAUTH_TOKEN ERROR] {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": "server_error", "message": str(e)}), 500
 
 # ─── Error handlers ───────────────────────────────────────────────────────────
 

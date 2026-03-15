@@ -9,18 +9,44 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 from pymongo import MongoClient
 
-client = MongoClient(
-    os.getenv("MONGO_URI"),
-    tlsAllowInvalidCertificates=True,  # Permitir certificados inválidos (Render issue)
-    serverSelectionTimeoutMS=5000,
-    connectTimeoutMS=10000,
-    socketTimeoutMS=10000,
-    retryWrites=False
-)
-db = client["explorerframe"]
-oauth_apps = db["oauth_apps"]
-oauth_codes = db["oauth_codes"]
-oauth_tokens = db["oauth_tokens"]
+# Conexión lazy: se conecta solo cuando se necesita
+_mongo_client = None
+
+def get_mongo_db():
+    """Obtiene la conexión a MongoDB (lazy initialization)"""
+    global _mongo_client
+    if _mongo_client is None:
+        try:
+            _mongo_client = MongoClient(
+                os.getenv("MONGO_URI"),
+                tlsAllowInvalidCertificates=True,
+                serverSelectionTimeoutMS=30000,
+                connectTimeoutMS=30000,
+                socketTimeoutMS=30000,
+                maxPoolSize=10,
+                minPoolSize=1,
+                retryWrites=False,
+                maxIdleTimeMS=45000
+            )
+            # Verificar que funciona
+            _mongo_client.admin.command('ping')
+        except Exception as e:
+            print(f"[MONGO ERROR] {str(e)}")
+            _mongo_client = None
+            raise
+    return _mongo_client["explorerframe"]
+
+# Lazy collection wrapper
+class LazyCollection:
+    def __init__(self, collection_name):
+        self.collection_name = collection_name
+    
+    def __getattr__(self, name):
+        return getattr(get_mongo_db()[self.collection_name], name)
+
+oauth_apps = LazyCollection("oauth_apps")
+oauth_codes = LazyCollection("oauth_codes")
+oauth_tokens = LazyCollection("oauth_tokens")
 
 def utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)
