@@ -153,7 +153,6 @@ def _notify_new_release(version, url, changelog):
 
 def utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)
-
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def send_telegram_message(chat_id, text):
@@ -196,14 +195,14 @@ def index():
         return redirect(url_for("dashboard"))
     # Bloquear plataformas no-Windows
     if _is_blocked_platform():
-        return render_template("unavailable.html"), 403
+        return redirect(url_for("unavailable"))
     release = get_release_info()
     return render_template("index.html", release=release)
 
 @app.route("/register/", methods=["GET", "POST"])
 def register():
     if _is_blocked_platform():
-        return render_template("unavailable.html"), 403
+        return redirect(url_for("unavailable"))
     if request.method == "GET":
         return render_template("register.html")
 
@@ -275,7 +274,7 @@ def register_verify():
 @app.route("/login/", methods=["GET", "POST"])
 def login():
     if _is_blocked_platform():
-        return render_template("unavailable.html"), 403
+        return redirect(url_for("unavailable"))
     if session.get("user"):
         return redirect(url_for("dashboard"))
     if request.method == "GET":
@@ -338,6 +337,11 @@ def dashboard():
 def logout():
     session.clear()
     return redirect(url_for("index"))
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, "app"),
+                               "app-icon.ico", mimetype="image/x-icon")
 
 # ─── Static app folder ────────────────────────────────────────────────────────
 
@@ -641,15 +645,69 @@ start_bot_thread()
 
 @app.route("/unavailable")
 def unavailable():
-    return render_template("unavailable.html"), 403
+    html = """<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solo Windows — ExplorerFrame</title>
+  <link rel="icon" type="image/x-icon" href="/app/app-icon.ico"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style>
+    .big-icon{font-size:5rem;margin-bottom:1.5rem;display:block}
+    .error-title{font-size:clamp(1.8rem,4vw,3rem);font-weight:700;
+      background:linear-gradient(135deg,#fbbf24,#f87171);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      background-clip:text;margin-bottom:1rem}
+    .error-sub{color:var(--muted);font-size:1rem;max-width:480px;line-height:1.7;margin-bottom:2rem}
+    .platform-badge{display:inline-flex;align-items:center;gap:.5rem;
+      background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);
+      border-radius:999px;padding:.35rem 1rem;font-size:.75rem;color:#fbbf24;
+      font-family:'JetBrains Mono',monospace;margin-bottom:2rem}
+    .os-list{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-bottom:2.5rem}
+    .os-chip{background:var(--surface2);border:1px solid var(--border);
+      border-radius:8px;padding:.5rem 1rem;font-size:.82rem;color:var(--muted);
+      font-family:'JetBrains Mono',monospace}
+    .os-chip.blocked{border-color:rgba(248,113,113,.4);color:var(--red)}
+    .os-chip.ok{border-color:rgba(34,211,160,.4);color:var(--green)}
+  </style>
+</head>
+<body>
+<nav><a class="nav-logo" href="/">&#x2B21; Explorer<span>Frame</span></a></nav>
+<div class="hero" style="min-height:100vh;">
+  <div class="platform-badge">&#9888;&#65039; Plataforma no compatible</div>
+  <span class="big-icon">&#129695;</span>
+  <h1 class="error-title">Solo para Windows</h1>
+  <p class="error-sub">ExplorerFrame es una herramienta de administración remota
+    diseñada exclusivamente para equipos Windows. Tu sistema operativo actual no es compatible.</p>
+  <div class="os-list">
+    <div class="os-chip ok">&#9989; Windows 10 / 11</div>
+    <div class="os-chip blocked">&#10060; Linux</div>
+    <div class="os-chip blocked">&#10060; macOS</div>
+    <div class="os-chip blocked">&#10060; Android</div>
+    <div class="os-chip blocked">&#10060; iOS</div>
+  </div>
+  <a href="/" class="btn btn-outline">&#8592; Volver al inicio</a>
+</div>
+</body>
+</html>"""
+    return html, 403, {"Content-Type": "text/html; charset=utf-8"}
+
+@app.errorhandler(403)
+def forbidden_handler(e):
+    return render_template("forbidden.html"), 403
 
 @app.errorhandler(404)
 def not_found(e):
     return render_template("404.html"), 404
 
-@app.errorhandler(403)
-def forbidden_handler(e):
-    return render_template("forbidden.html"), 403
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return render_template("405.html"), 405
+
+@app.errorhandler(500)
+def internal_error(e):
+    return render_template("500.html"), 500
 
 # ─── Run ──────────────────────────────────────────────────────────────────────
 

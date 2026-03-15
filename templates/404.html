@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 — ExplorerFrame</title>
+  <link rel="icon" type="image/x-icon" href="/app/app-icon.ico" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(5rem, 15vw, 10rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1; margin-bottom: 1rem;
+    }
+    .error-title { font-size: 1.4rem; font-weight: 600; margin-bottom: .75rem; }
+    .error-sub { color: var(--muted); font-size: .95rem; max-width: 420px; line-height: 1.7; margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">⬡ Explorer<span>Frame</span></a>
+</nav>
+<div class="hero" style="min-height:100vh;">
+  <div class="code">404</div>
+  <h1 class="error-title">Página no encontrada</h1>
+  <p class="error-sub">La URL que buscas no existe o fue movida. Verifica que la dirección sea correcta.</p>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
+    <a href="/" class="btn btn-primary">← Inicio</a>
+    <a href="/dashboard/" class="btn btn-outline">Dashboard</a>
+  </div>
+</div>
+</body>
+</html>
