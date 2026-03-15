@@ -1,5 +1,4 @@
 flask
-flask-session
 gunicorn
 pymongo[srv]
 python-dotenv
@@ -14,3 +13,4 @@ keyboard
 #pywin32
 psutil
 numpy
+PyJWT

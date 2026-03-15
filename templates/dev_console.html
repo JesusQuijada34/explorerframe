@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Developer Console — ExplorerFrame</title>
+  <link rel="icon" type="image/x-icon" href="/app/app-icon.ico"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style>
+    .dev-container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    .dev-header { margin-bottom: 3rem; }
+    .dev-header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .dev-header p { color: var(--muted); font-size: 1.1rem; }
+    
+    .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+    .app-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+    .app-card h3 { margin: 0 0 1rem 0; font-size: 1.3rem; }
+    .app-meta { font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem; }
+    .app-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .app-actions button { flex: 1; padding: 0.5rem; font-size: 0.85rem; }
+    
+    .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal.active { display: flex; }
+    .modal-content { background: var(--surface); border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%; }
+    .modal-header { font-size: 1.5rem; margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1.5rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    .form-group input, .form-group textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text); }
+    .form-group textarea { resize: vertical; min-height: 100px; font-family: monospace; }
+    
+    .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 500; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; }
+    .btn-secondary:hover { background: var(--surface3); }
+    .btn-danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
+    
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+<nav><a class="nav-logo" href="/">&#x2B21; Explorer<span>Frame</span></a></nav>
+
+<div class="dev-container">
+  <div class="dev-header">
+    <h1>🔧 Developer Console</h1>
+    <p>Crea y gestiona aplicaciones OAuth para integrar ExplorerFrame en tus proyectos</p>
+  </div>
+  
+  <button class="btn-primary" onclick="openCreateModal()">+ Nueva Aplicación</button>
+  
+  <div id="apps-container"></div>
+</div>
+
+<!-- Modal para crear app -->
+<div id="createModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">Nueva Aplicación</div>
+    <form onsubmit="createApp(event)">
+      <div class="form-group">
+        <label>Nombre de la aplicación</label>
+        <input type="text" id="appName" required placeholder="Mi App">
+      </div>
+      <div class="form-group">
+        <label>URIs de redirección (una por línea)</label>
+        <textarea id="redirectUris" required placeholder="https://myapp.com/callback&#10;https://myapp.com/oauth/callback"></textarea>
+      </div>
+      <div style="display: flex; gap: 1rem;">
+        <button type="submit" class="btn-primary" style="flex: 1;">Crear</button>
+        <button type="button" class="btn-secondary" style="flex: 1;" onclick="closeCreateModal()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal para mostrar credenciales -->
+<div id="credentialsModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">Credenciales de la Aplicación</div>
+    <div class="form-group">
+      <label>Client ID</label>
+      <input type="text" id="clientId" readonly>
+    </div>
+    <div class="form-group">
+      <label>Client Secret (guárdalo en un lugar seguro)</label>
+      <input type="text" id="clientSecret" readonly>
+    </div>
+    <button class="btn-secondary" style="width: 100%;" onclick="closeCredentialsModal()">Cerrar</button>
+  </div>
+</div>
+
+<script>
+async function loadApps() {
+  const res = await fetch('/api/v1/dev/apps');
+  const apps = await res.json();
+  const container = document.getElementById('apps-container');
+  
+  if (apps.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📱</div>
+        <p>No tienes aplicaciones registradas aún</p>
+        <p style="font-size: 0.9rem;">Crea tu primera app para comenzar a usar OAuth</p>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = `<div class="apps-grid">${apps.map(app => `
+    <div class="app-card">
+      <h3>${app.name}</h3>
+      <div class="app-meta">
+        <div>ID: <code>${app.client_id}</code></div>
+        <div>Creada: ${new Date(app.created_at).toLocaleDateString('es-ES')}</div>
+      </div>
+      <div class="app-actions">
+        <button class="btn-secondary" onclick="showCredentials('${app.client_id}')">Ver Credenciales</button>
+        <button class="btn-danger" onclick="deleteApp('${app.client_id}')">Eliminar</button>
+      </div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function openCreateModal() {
+  document.getElementById('createModal').classList.add('active');
+}
+
+function closeCreateModal() {
+  document.getElementById('createModal').classList.remove('active');
+  document.getElementById('appName').value = '';
+  document.getElementById('redirectUris').value = '';
+}
+
+async function createApp(e) {
+  e.preventDefault();
+  const name = document.getElementById('appName').value;
+  const redirectUris = document.getElementById('redirectUris').value.split('\n').filter(u => u.trim());
+  
+  const res = await fetch('/api/v1/dev/apps', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, redirect_uris: redirectUris })
+  });
+  
+  if (res.ok) {
+    const data = await res.json();
+    document.getElementById('clientId').value = data.client_id;
+    document.getElementById('clientSecret').value = data.client_secret;
+    document.getElementById('credentialsModal').classList.add('active');
+    closeCreateModal();
+    loadApps();
+  }
+}
+
+function showCredentials(clientId) {
+  alert('Credenciales para ' + clientId + '\n\nNota: El Client Secret solo se muestra una vez al crear la app.');
+}
+
+async function deleteApp(clientId) {
+  if (!confirm('¿Estás seguro de que quieres eliminar esta aplicación?')) return;
+  
+  const res = await fetch(`/api/v1/dev/apps/${clientId}`, { method: 'DELETE' });
+  if (res.ok) {
+    loadApps();
+  }
+}
+
+function closeCredentialsModal() {
+  document.getElementById('credentialsModal').classList.remove('active');
+}
+
+loadApps();
+</script>
+</body>
+</html>

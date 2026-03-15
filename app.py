@@ -4,31 +4,74 @@ import bcrypt
 import requests
 import threading
 import xml.etree.ElementTree as ET
+import jwt
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import (Flask, request, jsonify, render_template,
                    redirect, url_for, session, send_file, send_from_directory)
-from flask_session import Session
 from pymongo import MongoClient
 from dotenv import load_dotenv
+from oauth import (
+    get_app, create_auth_code, exchange_code_for_token,
+    verify_access_token, get_user_apps, create_app as oauth_create_app,
+    update_app as oauth_update_app, delete_app as oauth_delete_app
+)
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", secrets.token_hex(32))
 
-# ─── Sesión persistente server-side ──────────────────────────────────────────
-_session_dir = os.path.join(app.root_path, ".flask_sessions")
-os.makedirs(_session_dir, exist_ok=True)   # garantizar que existe antes de Session(app)
-app.config["SESSION_TYPE"] = "filesystem"
-app.config["SESSION_FILE_DIR"] = _session_dir
-app.config["SESSION_PERMANENT"] = True
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+# ─── JWT-based sessions (sin almacenamiento en servidor) ──────────────────────
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 if os.getenv("FLASK_ENV") == "production":
     app.config["SESSION_COOKIE_SECURE"] = True
-Session(app)
+    app.config["SESSION_COOKIE_DOMAIN"] = None
+
+# Middleware para manejar JWT en cookies
+def _encode_session(data):
+    """Codifica datos en JWT y los guarda en cookie."""
+    payload = {
+        **data,
+        "exp": datetime.now(timezone.utc) + timedelta(days=30),
+        "iat": datetime.now(timezone.utc)
+    }
+    return jwt.encode(payload, app.secret_key, algorithm="HS256")
+
+def _decode_session(token):
+    """Decodifica JWT de la cookie."""
+    try:
+        return jwt.decode(token, app.secret_key, algorithms=["HS256"])
+    except (jwt.InvalidTokenError, jwt.ExpiredSignatureError):
+        return None
+
+@app.before_request
+def _load_session_from_jwt():
+    """Carga la sesión desde JWT en la cookie."""
+    token = request.cookies.get("session")
+    if token:
+        data = _decode_session(token)
+        if data:
+            # Copiar datos al objeto session de Flask
+            for key, value in data.items():
+                if key not in ("exp", "iat"):
+                    session[key] = value
+
+@app.after_request
+def _save_session_to_jwt(response):
+    """Guarda la sesión en JWT en la cookie."""
+    if session.modified or session:
+        token = _encode_session(dict(session))
+        response.set_cookie(
+            "session",
+            token,
+            max_age=30*24*60*60,  # 30 días
+            httponly=True,
+            samesite="Lax",
+            secure=os.getenv("FLASK_ENV") == "production"
+        )
+    return response
 
 # ─── MongoDB ──────────────────────────────────────────────────────────────────
 client = MongoClient(os.getenv("MONGO_URI"))
@@ -640,6 +683,167 @@ def start_bot_thread():
 
 # Arrancar bot al iniciar la app (no en before_request para evitar race conditions)
 start_bot_thread()
+
+# ─── OAuth 2.0 Endpoints ──────────────────────────────────────────────────────
+
+@app.route("/oauth/authorize", methods=["GET"])
+def oauth_authorize():
+    """
+    Inicia el flujo OAuth. El usuario debe estar logueado.
+    Parámetros: client_id, redirect_uri, scope, state
+    """
+    if not session.get("user"):
+        return redirect(url_for("login"))
+    
+    client_id = request.args.get("client_id")
+    redirect_uri = request.args.get("redirect_uri")
+    scope = request.args.get("scope", "profile")
+    state = request.args.get("state", "")
+    
+    if not client_id or not redirect_uri:
+        return jsonify({"error": "missing_parameters"}), 400
+    
+    app_info = get_app(client_id)
+    if not app_info or redirect_uri not in app_info["redirect_uris"]:
+        return jsonify({"error": "invalid_client"}), 400
+    
+    # Generar código de autorización
+    code = create_auth_code(client_id, session["user"], redirect_uri, scope)
+    
+    # Redirigir a la app con el código
+    from urllib.parse import urlencode
+    params = {"code": code, "state": state} if state else {"code": code}
+    redirect_url = f"{redirect_uri}?{urlencode(params)}"
+    return redirect(redirect_url)
+
+@app.route("/oauth/token", methods=["POST"])
+def oauth_token():
+    """
+    Intercambia un código de autorización por un access token.
+    Body: client_id, client_secret, code, redirect_uri, grant_type
+    """
+    data = request.get_json(silent=True) or {}
+    
+    client_id = data.get("client_id")
+    client_secret = data.get("client_secret")
+    code = data.get("code")
+    redirect_uri = data.get("redirect_uri")
+    grant_type = data.get("grant_type", "authorization_code")
+    
+    if grant_type != "authorization_code":
+        return jsonify({"error": "unsupported_grant_type"}), 400
+    
+    if not all([client_id, client_secret, code, redirect_uri]):
+        return jsonify({"error": "missing_parameters"}), 400
+    
+    result = exchange_code_for_token(client_id, client_secret, code, redirect_uri)
+    if not result:
+        return jsonify({"error": "invalid_grant"}), 400
+    
+    return jsonify(result)
+
+@app.route("/oauth/userinfo")
+def oauth_userinfo():
+    """
+    Devuelve información del usuario autenticado.
+    Requiere: Authorization: Bearer <access_token>
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"error": "missing_token"}), 401
+    
+    access_token = auth_header[7:]
+    token_data = verify_access_token(access_token)
+    if not token_data:
+        return jsonify({"error": "invalid_token"}), 401
+    
+    user = users_col.find_one({"telegram_username": token_data["user_id"]})
+    if not user:
+        return jsonify({"error": "user_not_found"}), 404
+    
+    return jsonify({
+        "user_id": user["telegram_username"],
+        "api_key": user["api_key"],
+        "created_at": user["created_at"].isoformat() if isinstance(user["created_at"], datetime) else user["created_at"]
+    })
+
+@app.route("/oauth/revoke", methods=["POST"])
+def oauth_revoke():
+    """Revoca un access token."""
+    data = request.get_json(silent=True) or {}
+    access_token = data.get("token")
+    
+    if not access_token:
+        return jsonify({"error": "missing_token"}), 400
+    
+    from oauth import revoke_token
+    revoke_token(access_token)
+    return jsonify({"status": "revoked"})
+
+# ─── Developer Console ────────────────────────────────────────────────────────
+
+@app.route("/dev/")
+@login_required
+def dev_console():
+    """Panel de desarrolladores."""
+    apps = get_user_apps(session["user"])
+    return render_template("dev_console.html", apps=apps)
+
+@app.route("/api/v1/dev/apps", methods=["GET", "POST"])
+@login_required
+def dev_apps():
+    """Listar o crear apps."""
+    if request.method == "GET":
+        apps = get_user_apps(session["user"])
+        return jsonify([{
+            "client_id": app["client_id"],
+            "name": app["name"],
+            "redirect_uris": app["redirect_uris"],
+            "created_at": app["created_at"].isoformat() if isinstance(app["created_at"], datetime) else app["created_at"]
+        } for app in apps])
+    
+    # POST: crear app
+    data = request.get_json(silent=True) or {}
+    app_name = data.get("name", "").strip()
+    redirect_uris = data.get("redirect_uris", [])
+    
+    if not app_name or not redirect_uris:
+        return jsonify({"error": "missing_fields"}), 400
+    
+    result = oauth_create_app(session["user"], app_name, redirect_uris)
+    return jsonify(result), 201
+
+@app.route("/api/v1/dev/apps/<client_id>", methods=["GET", "PUT", "DELETE"])
+@login_required
+def dev_app_detail(client_id):
+    """Obtener, actualizar o eliminar una app."""
+    app_info = get_app(client_id)
+    if not app_info or app_info["owner"] != session["user"]:
+        return jsonify({"error": "not_found"}), 404
+    
+    if request.method == "GET":
+        return jsonify({
+            "client_id": app_info["client_id"],
+            "name": app_info["name"],
+            "redirect_uris": app_info["redirect_uris"],
+            "created_at": app_info["created_at"].isoformat() if isinstance(app_info["created_at"], datetime) else app_info["created_at"]
+        })
+    
+    if request.method == "PUT":
+        data = request.get_json(silent=True) or {}
+        updates = {}
+        if "name" in data:
+            updates["name"] = data["name"]
+        if "redirect_uris" in data:
+            updates["redirect_uris"] = data["redirect_uris"]
+        
+        if updates:
+            oauth_update_app(client_id, session["user"], **updates)
+        return jsonify({"status": "updated"})
+    
+    if request.method == "DELETE":
+        oauth_delete_app(client_id, session["user"])
+        return jsonify({"status": "deleted"})
 
 # ─── Error handlers ───────────────────────────────────────────────────────────
 
