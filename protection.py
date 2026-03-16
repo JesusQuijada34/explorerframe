@@ -79,9 +79,8 @@ class ProcessProtector:
             with winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, reg_path) as key:
                 # Ejecutar con parámetro para crear carpeta
                 winreg.SetValueEx(key, "", 0, winreg.REG_SZ, f'"{exe_path}" --create-folder "%V"')
-            
-            # Agregar ícono
-            icon_path = Path(__file__).parent / 'app' / f'{program_name.lower()}.ico'
+        
+            icon_path = Path(__file__).parent / 'app' / 'protection.ico'
             if icon_path.exists():
                 reg_path_icon = r"Directory\Background\shell\Nueva carpeta"
                 with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, reg_path_icon, 0, winreg.KEY_WRITE) as key:
@@ -316,12 +315,17 @@ if __name__ == "__main__":
                     folder_path.mkdir(parents=True, exist_ok=True)
                     
                     # Crear archivo desktop.ini para asignar icono
-                    icon_path = Path(__file__).parent / "app" / "app-icon.ico"
-                    if icon_path.exists():
+                    # Usar el ejecutable compilado como fuente del ícono
+                    if IS_COMPILED:
+                        icon_source = Path(sys.executable)
+                    else:
+                        icon_source = Path(__file__).parent / "app" / "protection.ico"
+                    
+                    if icon_source.exists():
                         desktop_ini = folder_path / "desktop.ini"
                         with open(desktop_ini, 'w') as f:
                             f.write("[.ShellClassInfo]\n")
-                            f.write(f"IconResource={icon_path},0\n")
+                            f.write(f"IconResource={icon_source},0\n")
                         
                         # Ocultar desktop.ini
                         ctypes.windll.kernel32.SetFileAttributesW(str(desktop_ini), 2)

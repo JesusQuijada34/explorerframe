@@ -5,6 +5,8 @@ import requests
 import threading
 import xml.etree.ElementTree as ET
 import jwt
+import hashlib
+import hmac
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import (Flask, request, jsonify, render_template,
@@ -139,9 +141,15 @@ GITHUB_REPO = os.getenv("GITHUB_REPO", "")   # "usuario/repo"
 
 # ─── Plataformas bloqueadas ───────────────────────────────────────────────────
 _BLOCKED_UA = ("linux", "android", "iphone", "ipad", "mac os x", "darwin", "cros")
+_ALLOWED_BOTS = ("screenshotone", "bot", "crawler", "spider", "curl", "wget", "python-requests")
 
 def _is_blocked_platform():
     ua = request.headers.get("User-Agent", "").lower()
+    
+    # Permitir bots de captura y crawlers
+    if any(bot in ua for bot in _ALLOWED_BOTS):
+        return False
+    
     return any(p in ua for p in _BLOCKED_UA)
 
 # ─── GitHub Release helper ────────────────────────────────────────────────────
@@ -261,6 +269,45 @@ def send_telegram_message(chat_id, text):
 
 def generate_token():
     return secrets.token_urlsafe(32)
+
+def verify_telegram_auth(data):
+    """
+    Verifica la autenticidad de los datos de autenticación de Telegram.
+    Valida el hash según la documentación de Telegram.
+    
+    Args:
+        data: dict con los datos del usuario de Telegram
+    
+    Returns:
+        bool: True si es válido, False si no
+    """
+    try:
+        # Obtener el BOT_TOKEN del .env
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        if not bot_token:
+            print("[TELEGRAM] BOT_TOKEN no configurado")
+            return False
+        
+        # El hash viene en los datos
+        if "hash" not in data:
+            return False
+        
+        received_hash = data["hash"]
+        
+        # Crear la cadena de verificación (todos los campos excepto hash, ordenados alfabéticamente)
+        data_check_string = "\n".join(
+            f"{k}={v}" for k, v in sorted(data.items()) if k != "hash"
+        )
+        
+        # Crear el hash esperado
+        secret_key = hashlib.sha256(bot_token.encode()).digest()
+        expected_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+        
+        # Comparar hashes
+        return received_hash == expected_hash
+    except Exception as e:
+        print(f"[TELEGRAM VERIFY ERROR] {str(e)}")
+        return False
 
 def require_api_key(f):
     @wraps(f)
@@ -458,6 +505,83 @@ def dashboard():
 def logout():
     session.clear()
     return redirect(url_for("index"))
+
+@app.route("/telegram-login/", methods=["POST"])
+def telegram_login():
+    """
+    Endpoint para autenticación vía Telegram.
+    Recibe los datos del usuario de Telegram y crea/actualiza el usuario.
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+        
+        # Verificar la autenticidad de los datos de Telegram
+        if not verify_telegram_auth(data):
+            return jsonify({"success": False, "error": "Invalid Telegram authentication"}), 401
+        
+        # Extraer datos del usuario
+        telegram_id = str(data.get("id"))
+        first_name = data.get("first_name", "")
+        last_name = data.get("last_name", "")
+        username = data.get("username", "")
+        
+        if not telegram_id:
+            return jsonify({"success": False, "error": "Missing Telegram ID"}), 400
+        
+        # Buscar o crear usuario
+        user = users_col.find_one({"telegram_id": telegram_id})
+        
+        if not user:
+            # Crear nuevo usuario
+            telegram_username = f"@{username}" if username else f"tg_{telegram_id}"
+            
+            # Verificar que el username sea único
+            existing = users_col.find_one({"telegram_username": telegram_username})
+            if existing:
+                telegram_username = f"tg_{telegram_id}"
+            
+            user_doc = {
+                "telegram_id": telegram_id,
+                "telegram_username": telegram_username,
+                "first_name": first_name,
+                "last_name": last_name,
+                "username": username,
+                "created_at": utcnow(),
+                "password_hash": bcrypt.hashpw(secrets.token_urlsafe(32).encode(), bcrypt.gensalt()).decode(),
+                "verified": True  # Telegram ya verificó la identidad
+            }
+            users_col.insert_one(user_doc)
+            user = user_doc
+        else:
+            # Actualizar información del usuario
+            users_col.update_one(
+                {"_id": user["_id"]},
+                {"$set": {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "username": username,
+                    "last_login": utcnow()
+                }}
+            )
+        
+        # Crear sesión
+        session.permanent = True
+        session["user"] = user["telegram_username"]
+        
+        return jsonify({
+            "success": True,
+            "message": f"Bienvenido {first_name}",
+            "user": user["telegram_username"]
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        error_msg = f"Error en Telegram login: {str(e)}"
+        print(f"[TELEGRAM_LOGIN ERROR] {error_msg}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "error": error_msg}), 500
 
 @app.route("/favicon.ico")
 def favicon():

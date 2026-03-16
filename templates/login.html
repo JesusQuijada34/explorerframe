@@ -6,6 +6,7 @@
   <title>Iniciar sesión — ExplorerFrame</title>
   <link rel="icon" type="image/x-icon" href="/app/app-icon.ico" />
   <link rel="stylesheet" href="/static/style.css" />
+  <script async src="https://telegram.org/js/telegram-widget.js?23" data-telegram-login="explorerframebot" data-size="large" data-onauth="onTelegramAuth(user)" data-request-access="write"></script>
 </head>
 <body>
 <nav>
@@ -42,10 +43,40 @@
       </button>
     </form>
 
+    <div style="margin: 20px 0; text-align: center;">
+      <p style="color: #666; margin-bottom: 15px;">O inicia sesión con Telegram:</p>
+    </div>
+
     <div class="auth-footer">
       ¿No tienes cuenta? <a href="/register/">Regístrate</a>
     </div>
   </div>
 </div>
+
+<script type="text/javascript">
+function onTelegramAuth(user) {
+  // Enviar datos de Telegram al servidor
+  fetch('/telegram-login/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(user)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Redirigir al dashboard
+      window.location.href = '/dashboard/';
+    } else {
+      alert('Error: ' + (data.error || 'No se pudo iniciar sesión'));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Error al conectar con el servidor');
+  });
+}
+</script>
 </body>
 </html>

@@ -1,11 +1,11 @@
 # Changelog — ExplorerFrame
 
-All notable changes to this project are documented here.
-Format: `[version] YYYY-MM-DD — description`
+Todos los cambios notables de este proyecto están documentados aquí.  
+Formato: `[version] YYYY-MM-DD — descripción`
 
 ---
 
-## [v1.2] 2026-03-14
+## [v1.2] 2026-03-14 — Estabilidad, Actualizaciones Automáticas y Nuevos Comandos
 
 ### Server (`app.py`)
 - **Fix HTTP 500**: session directory now created before `Session(app)` initializes, preventing crash on first request in Render
