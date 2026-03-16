@@ -20,13 +20,18 @@ def get_mongo_db():
             _mongo_client = MongoClient(
                 os.getenv("MONGO_URI"),
                 tlsAllowInvalidCertificates=True,
-                serverSelectionTimeoutMS=30000,
-                connectTimeoutMS=30000,
-                socketTimeoutMS=30000,
-                maxPoolSize=10,
-                minPoolSize=1,
+                # Timeouts recomendados para Render + Atlas
+                serverSelectionTimeoutMS=15000,
+                connectTimeoutMS=15000,
+                socketTimeoutMS=15000,
+                # Pool de conexiones
+                maxPoolSize=5,
+                minPoolSize=0,
+                # Render no soporta bien retry writes
                 retryWrites=False,
-                maxIdleTimeMS=45000
+                # Heartbeat para mantener conexión viva
+                heartbeatFrequencyMS=10000,
+                directConnection=False
             )
             # Verificar que funciona
             _mongo_client.admin.command('ping')

