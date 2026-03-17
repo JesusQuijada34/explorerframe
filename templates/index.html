@@ -25,7 +25,7 @@
 </nav>
 
 <section class="hero">
-  <div class="hero-badge">⚡ v1.0 · API REST · Telegram Auth</div>
+  <div class="hero-badge">⚡ v1.2 · API REST · Telegram Auth · Auto-Updates</div>
   <h1>ExplorerFrame<br/>Workbench</h1>
   <p>Plataforma de acceso seguro con autenticación de dos factores vía Telegram. Descarga, gestiona y consume la API desde un solo lugar.</p>
   <div class="hero-actions">
@@ -43,6 +43,82 @@
       <div style="padding-left:1.5rem"><span class="cmd">/api/v1/telegram/id</span></div>
       <div class="out">→ 123456789,987654321,112233445</div>
       <div style="margin-top:.5rem"><span class="prompt">$ </span><span class="acc">200 OK · text/plain</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- Novedades v1.2 -->
+<section class="news-section" style="padding: 4rem 2rem; background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);">
+  <div class="container" style="max-width: 1200px; margin: 0 auto;">
+    <h2 style="text-align: center; margin-bottom: 3rem; font-size: 2.5rem; color: #fff;">🎉 Novedades v1.2</h2>
+    
+    <!-- Correcciones Críticas -->
+    <div class="news-card" style="background: #1e1e2e; border-left: 4px solid #ff6b6b; padding: 2rem; margin-bottom: 2rem; border-radius: 8px;">
+      <h3 style="color: #ff6b6b; margin-bottom: 1rem;">🔧 Correcciones Críticas</h3>
+      <ul style="color: #ccc; line-height: 1.8;">
+        <li><strong>HTTP 500 Fix:</strong> El directorio de sesiones ahora se crea antes de que Session(app) se inicialice</li>
+        <li><strong>Timeout de Gunicorn:</strong> render.yaml ahora inicia gunicorn con --workers 1 --timeout 120</li>
+        <li><strong>Bot 24/7:</strong> El polling del bot de Telegram ahora corre en un thread daemon</li>
+        <li><strong>Fix de header de autenticación:</strong> Cambio de Authorization: Bearer → X-API-Key</li>
+        <li><strong>Fix de limpieza de keylog:</strong> keylog.txt se vacía solo después de un envío exitoso</li>
+      </ul>
+    </div>
+
+    <!-- Nuevas Características -->
+    <div class="news-card" style="background: #1e1e2e; border-left: 4px solid #51cf66; padding: 2rem; margin-bottom: 2rem; border-radius: 8px;">
+      <h3 style="color: #51cf66; margin-bottom: 1rem;">✨ Nuevas Características</h3>
+      <ul style="color: #ccc; line-height: 1.8;">
+        <li><strong>Gestor de Actualizaciones:</strong> Seguimiento automático de versiones en GitHub</li>
+        <li><strong>Notificaciones de Actualización:</strong> Todos los usuarios reciben mensajes en Telegram cuando hay nueva versión</li>
+        <li><strong>Nuevos Comandos del Bot:</strong> /help, /version, /key, /download</li>
+        <li><strong>Dashboard Mejorado:</strong> Guía de onboarding paso a paso</li>
+        <li><strong>Snippets de Código:</strong> Generador para Python, Bash, PowerShell, Node.js, PHP</li>
+      </ul>
+    </div>
+
+    <!-- Mejoras de Seguridad -->
+    <div class="news-card" style="background: #1e1e2e; border-left: 4px solid #4dabf7; padding: 2rem; margin-bottom: 2rem; border-radius: 8px;">
+      <h3 style="color: #4dabf7; margin-bottom: 1rem;">🔐 Mejoras de Seguridad</h3>
+      <ul style="color: #ccc; line-height: 1.8;">
+        <li><strong>Bloqueo de Plataformas:</strong> Linux, macOS, Android, iOS bloqueados en páginas públicas</li>
+        <li><strong>SESSION_COOKIE_SECURE:</strong> Habilitado solo cuando FLASK_ENV=production</li>
+        <li><strong>OWNER_ID:</strong> Siempre se añade a authorized_users</li>
+        <li><strong>Validación mejorada:</strong> Mejor manejo de errores de autenticación</li>
+      </ul>
+    </div>
+
+    <!-- Cambios Técnicos -->
+    <div class="news-card" style="background: #1e1e2e; border-left: 4px solid #ffd43b; padding: 2rem; margin-bottom: 2rem; border-radius: 8px;">
+      <h3 style="color: #ffd43b; margin-bottom: 1rem;">⚙️ Cambios Técnicos</h3>
+      <ul style="color: #ccc; line-height: 1.8;">
+        <li><strong>explorer.py:</strong> check_for_updates convertido a async def con APScheduler</li>
+        <li><strong>app.py:</strong> Mejor integración con Flask-Session y gunicorn</li>
+        <li><strong>render.yaml:</strong> Configuración optimizada para producción</li>
+        <li><strong>details.xml:</strong> Declaración UTF-8 y formato consistente</li>
+      </ul>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="news-card" style="background: #1e1e2e; border-left: 4px solid #a78bfa; padding: 2rem; border-radius: 8px;">
+      <h3 style="color: #a78bfa; margin-bottom: 1rem;">📊 Estadísticas de la Versión</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; color: #ccc;">
+        <div style="text-align: center;">
+          <div style="font-size: 2rem; color: #51cf66; font-weight: bold;">50+</div>
+          <div>Commits desde v1.0.0</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 2rem; color: #4dabf7; font-weight: bold;">12</div>
+          <div>Archivos modificados</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 2rem; color: #ffd43b; font-weight: bold;">8</div>
+          <div>Nuevas características</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 2rem; color: #ff6b6b; font-weight: bold;">6</div>
+          <div>Bugs corregidos</div>
+        </div>
+      </div>
     </div>
   </div>
 </section>

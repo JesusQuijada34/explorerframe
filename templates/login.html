@@ -45,6 +45,9 @@
 
     <div style="margin: 20px 0; text-align: center;">
       <p style="color: #666; margin-bottom: 15px;">O inicia sesión con Telegram:</p>
+      <div style="display: flex; justify-content: center;">
+        <script async src="https://telegram.org/js/telegram-widget.js?23" data-telegram-login="explorerframebot" data-size="large" data-onauth="onTelegramAuth(user)" data-request-access="write"></script>
+      </div>
     </div>
 
     <div class="auth-footer">
@@ -55,6 +58,17 @@
 
 <script type="text/javascript">
 function onTelegramAuth(user) {
+  // Mostrar información de la cuenta en la consola
+  console.info('Datos de la cuenta:', {
+    id: user.id,
+    first_name: user.first_name,
+    last_name: user.last_name || 'N/A',
+    username: user.username || 'N/A',
+    photo_url: user.photo_url || 'N/A',
+    auth_date: user.auth_date,
+    hash: user.hash
+  });
+
   // Enviar datos de Telegram al servidor
   fetch('/telegram-login/', {
     method: 'POST',
