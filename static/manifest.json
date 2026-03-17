@@ -1,0 +1,44 @@
+{
+  "name": "ExplorerFrame Workbench",
+  "short_name": "ExplorerFrame",
+  "description": "Plataforma de acceso seguro con autenticación 2FA vía Telegram. Descarga, gestiona y consume la API desde un solo lugar.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/app/app-icon.ico",
+      "sizes": "48x48 72x72 96x96 144x144 192x192 256x256 512x512",
+      "type": "image/x-icon",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Iniciar sesión",
+      "short_name": "Login",
+      "description": "Acceder a tu cuenta",
+      "url": "/login/",
+      "icons": [{ "src": "/app/app-icon.ico", "sizes": "96x96" }]
+    },
+    {
+      "name": "Registrarse",
+      "short_name": "Register",
+      "description": "Crear una cuenta nueva",
+      "url": "/register/",
+      "icons": [{ "src": "/app/app-icon.ico", "sizes": "96x96" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Panel de control",
+      "url": "/dashboard/",
+      "icons": [{ "src": "/app/app-icon.ico", "sizes": "96x96" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

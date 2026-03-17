@@ -606,6 +606,10 @@ def favicon():
 def app_static(filename):
     return send_from_directory(os.path.join(app.root_path, "app"), filename)
 
+@app.route("/manifest.json")
+def manifest():
+    return send_from_directory(os.path.join(app.root_path, "static"), "manifest.json", mimetype="application/manifest+json")
+
 # ─── Download (vía token de un solo uso generado por API) ─────────────────────
 
 @app.route("/download/")
@@ -675,26 +679,24 @@ def api_download_status():
 
 @app.route("/api/v1/news")
 def api_news():
-    """Devuelve las noticias en tiempo real desde NEWS.md convertidas a HTML."""
+    """Devuelve NEWS.md en tiempo real: markdown crudo + timestamp de modificación."""
     try:
         news_path = os.path.join(app.root_path, "NEWS.md")
         if not os.path.exists(news_path):
             return jsonify({"error": "NEWS.md not found"}), 404
-        
+
         with open(news_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        
-        # Obtener timestamp de última modificación
+
         last_modified = os.path.getmtime(news_path)
-        
-        # Convertir Markdown a HTML (simple)
-        html = _markdown_to_html(content)
-        
-        return jsonify({
-            "html": html,
+
+        response = jsonify({
+            "markdown": content,
             "lastModified": last_modified,
-            "timestamp": datetime.utcnow().isoformat()
         })
+        # No cachear — siempre fresco
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        return response
     except Exception as e:
         print(f"[NEWS API ERROR] {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -715,31 +717,6 @@ def api_news_notify():
         print(f"[NEWS NOTIFY ERROR] {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-def _markdown_to_html(markdown_text):
-    """Convierte Markdown simple a HTML."""
-    import re
-    html = markdown_text
-    
-    # Títulos
-    html = re.sub(r'^### (.*?)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
-    html = re.sub(r'^## (.*?)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
-    html = re.sub(r'^# (.*?)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
-    
-    # Negritas
-    html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
-    
-    # Cursivas
-    html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html)
-    
-    # Listas
-    html = re.sub(r'^\- (.*?)$', r'<li>\1</li>', html, flags=re.MULTILINE)
-    html = re.sub(r'(<li>.*?</li>)', r'<ul>\1</ul>', html, flags=re.DOTALL)
-    
-    # Saltos de línea
-    html = html.replace('\n\n', '</p><p>')
-    html = f'<p>{html}</p>'
-    
-    return html
 
 # ─── Bot Telegram 24/7 ────────────────────────────────────────────────────────
 
