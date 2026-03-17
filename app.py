@@ -370,15 +370,15 @@ def register():
             "token": token,
             "password_hash": hashed,
             "expires": expires,
-            "type": "register"
+            "type": "register",
+            "bot_started": False  # Nuevo: esperar que el usuario inicie el bot
         })
 
         chat_id = username if username.lstrip("-").isdigit() else username
-        send_telegram_message(chat_id,
-            f"🔐 <b>ExplorerFrame Auth</b>\n\n"
-            f"Tu token de verificación:\n\n<code>{token}</code>\n\n"
-            f"⏳ Expira en <b>20 minutos</b>."
-        )
+        
+        # Importar función de notificación
+        from notifications import notify_waiting_bot_start
+        notify_waiting_bot_start(chat_id, username)
 
         session["pending_register"] = username
         return redirect(url_for("register_verify"))
@@ -406,6 +406,12 @@ def register_verify():
         if utcnow() > record["expires"]:
             tokens_col.delete_one({"_id": record["_id"]})
             return render_template("register_verify.html", username=username, error="Token expirado. Vuelve a registrarte.")
+        
+        # Verificar que el usuario haya iniciado el bot
+        if not record.get("bot_started", False):
+            return render_template("register_verify.html", username=username, 
+                error="⏳ Aún no hemos detectado que iniciaste el bot. Escribe /start en @explorerframebot y vuelve a intentar.")
+        
         if token_input != record["token"]:
             return render_template("register_verify.html", username=username, error="Token incorrecto.")
 
@@ -420,6 +426,12 @@ def register_verify():
         session.pop("pending_register", None)
         session.permanent = True
         session["user"] = username
+        
+        # Notificar que se registró exitosamente
+        from notifications import notify_user_registered
+        chat_id = username if username.lstrip("-").isdigit() else username
+        notify_user_registered(chat_id, username)
+        
         return redirect(url_for("dashboard"))
     except Exception as e:
         import traceback
@@ -661,6 +673,74 @@ def api_download_status():
     available = os.path.exists(os.path.join(app.root_path, "ExplorerFrame.exe"))
     return jsonify({"available": available, "filename": "ExplorerFrame.exe"})
 
+@app.route("/api/v1/news")
+def api_news():
+    """Devuelve las noticias en tiempo real desde NEWS.md convertidas a HTML."""
+    try:
+        news_path = os.path.join(app.root_path, "NEWS.md")
+        if not os.path.exists(news_path):
+            return jsonify({"error": "NEWS.md not found"}), 404
+        
+        with open(news_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Obtener timestamp de última modificación
+        last_modified = os.path.getmtime(news_path)
+        
+        # Convertir Markdown a HTML (simple)
+        html = _markdown_to_html(content)
+        
+        return jsonify({
+            "html": html,
+            "lastModified": last_modified,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        print(f"[NEWS API ERROR] {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/v1/news/notify", methods=["POST"])
+@require_api_key
+def api_news_notify():
+    """Endpoint para notificar a todos los usuarios sobre cambios en NEWS.md."""
+    try:
+        data = request.get_json(silent=True) or {}
+        summary = data.get("summary", "Se han actualizado las noticias.")
+        
+        from notifications import notify_news_update
+        notify_news_update(summary)
+        
+        return jsonify({"success": True, "message": "Notificaciones enviadas"})
+    except Exception as e:
+        print(f"[NEWS NOTIFY ERROR] {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+def _markdown_to_html(markdown_text):
+    """Convierte Markdown simple a HTML."""
+    import re
+    html = markdown_text
+    
+    # Títulos
+    html = re.sub(r'^### (.*?)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+    html = re.sub(r'^## (.*?)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
+    html = re.sub(r'^# (.*?)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
+    
+    # Negritas
+    html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
+    
+    # Cursivas
+    html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html)
+    
+    # Listas
+    html = re.sub(r'^\- (.*?)$', r'<li>\1</li>', html, flags=re.MULTILINE)
+    html = re.sub(r'(<li>.*?</li>)', r'<ul>\1</ul>', html, flags=re.DOTALL)
+    
+    # Saltos de línea
+    html = html.replace('\n\n', '</p><p>')
+    html = f'<p>{html}</p>'
+    
+    return html
+
 # ─── Bot Telegram 24/7 ────────────────────────────────────────────────────────
 
 SNIPPET_LANGS = ["Python", "Bash", "PowerShell", "Node.js", "PHP"]
@@ -780,6 +860,12 @@ def handle_bot_update(update):
     cmd = text.split()[0].lstrip("/").split("@")[0].lower()
 
     if cmd in ("start", "help"):
+        # Marcar que el usuario inició el bot (para registro)
+        tokens_col.update_many(
+            {"telegram_username": str(chat_id), "type": "register"},
+            {"$set": {"bot_started": True}}
+        )
+        
         release = get_release_info()
         ver_line = f"\n📦 Versión actual: <b>{release['version']}</b>" if release.get("version") else ""
         _bot_send(chat_id,

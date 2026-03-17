@@ -422,3 +422,27 @@ nav {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+
+/* ── Telegram Widget ── */
+.telegram-login-wrapper {
+  margin: 22px 0;
+  text-align: center;
+}
+
+.telegram-label {
+  color: #888;
+  margin-bottom: 14px;
+  font-size: 14px;
+  display: block;
+}
+
+.telegram-widget {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.telegram-widget iframe {
+  border-radius: 8px;
+}
