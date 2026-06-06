@@ -9,7 +9,7 @@ apscheduler>=3.10.0
 pytz
 tzlocal
 pillow
-keyboard
+# keyboard
 #pywin32
 psutil
 numpy
