@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from io import BytesIO
 import tempfile
+import zipfile
 
 if platform.system() == "Windows":
     import PIL.ImageGrab
@@ -597,7 +598,11 @@ def run_bot():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(CallbackQueryHandler(handle_navigation))
     print("🚀 Bot ExplorerFrame iniciado. Ctrl+C para detener.")
-    app.run_polling()
+    import asyncio
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    # Usar stop_signals=None para evitar el error de set_wakeup_fd en hilos
+    app.run_polling(stop_signals=None)
 
 # =============================================================================
 # FUNCIONES PARA CREAR CARPETA CON ICONO (contexto menu)
@@ -649,3 +654,20 @@ def open_file_explorer():
     else:
         print("Esta función es solo para Windows.")
 
+
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def health_check():
+    return "ExplorerFrame is running!", 200
+
+if __name__ == "__main__":
+    # Iniciar el bot en un hilo separado si se ejecuta directamente
+    import threading
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    
+    # Iniciar el servidor Flask para Render
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)

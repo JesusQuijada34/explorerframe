@@ -34,7 +34,7 @@ def ensure_deps():
         ('pytz', 'pytz'),
         ('tzlocal', 'tzlocal'),
         ('pillow', 'PIL'),
-        ('keyboard', 'keyboard'),
+        # ('keyboard', 'keyboard'), # Comentado para evitar errores en Linux/Render
         ('psutil', 'psutil'),
         ('requests', 'requests'),
         ('numpy', 'numpy')
