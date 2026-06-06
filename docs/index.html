@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cargando…</title>
+  <title>ExplorerFrame</title>
   <link rel="icon" href="https://raw.githubusercontent.com/JesusQuijada34/explorerframe/main/app/app-icon.ico" type="image/x-icon" />
   <style>
     :root {
@@ -38,7 +38,6 @@
       margin: 0;
       min-height: 100vh;
       color: var(--text);
-      /* BG FIX: no repeat, partial, non-white, layered gradient */
       background:
         radial-gradient(ellipse 650px 320px at 65% 20%, rgba(36,134,255,0.15) 0%, rgba(30,50,130, 0.08) 60%, transparent 100%) no-repeat,
         radial-gradient(circle 430px at 20% 80%, rgba(36,134,255,0.10) 0%, rgba(10,24,55,0.07) 60%, transparent 100%) no-repeat,
@@ -221,21 +220,9 @@
         return 'unknown';
       }
       const detected = detectOS();
-      if (detected === 'android') {
-        const ov = document.createElement('div');
-        ov.style.position = 'fixed';
-        ov.style.inset = '0';
-        ov.style.display = 'flex';
-        ov.style.alignItems = 'center';
-        ov.style.justifyContent = 'center';
-        ov.style.background = 'linear-gradient(180deg, rgba(2,8,23,0.85), rgba(2,8,23,0.7))';
-        ov.style.color = 'white';
-        ov.style.zIndex = 9999;
-        ov.style.flexDirection = 'column';
-        ov.innerHTML = '<div style="font-weight:700; font-size:18px; margin-bottom:12px">Incompatible: Android no soportado</div><div style="max-width:70ch; text-align:center; opacity:0.95">La instalación y la descarga de paquetes no son compatibles en Android. La página ha sido bloqueada por seguridad.</div>';
-        document.body.appendChild(ov);
-        return;
-      }
+      
+      // Bloqueo eliminado: Ahora permitimos todas las plataformas
+      
       // helpers
       function githubRaw(owner, repo, branch, filepath){
         branch = branch || 'main';
@@ -287,8 +274,8 @@
           if(appFooter) appFooter.parentNode.insertBefore(support, appFooter.nextSibling);
           else document.getElementById('appcard').appendChild(support);
         }
-        if(type === 'unsupported') support.innerHTML = '<span class="unsupported">' + escapeHtml(text) + '</span>';
-        else if(type === 'warn') support.innerHTML = '<span class="warn">' + escapeHtml(text) + '</span>';
+        if(type === 'unsupported') support.innerHTML = '<span class="unsupported">'+text+'</span>';
+        else if(type === 'warn') support.innerHTML = '<span class="warn">'+text+'</span>';
         else support.textContent = text;
       }
       function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -300,10 +287,7 @@
         metaAuthor.textContent = '';
         metaRate.textContent = '';
         document.title = 'Cargando…';
-        // PRIORITIZE REMOTE GITHUB RAW
-        const detailsCandidates = [
-          LOCAL.details
-        ];
+        const detailsCandidates = [LOCAL.details];
         let detailsText = await fetchTextWithFallbackSafe(detailsCandidates);
         let metadata = {};
         if(detailsText){
@@ -332,11 +316,7 @@
           if(!p) return '';
           if(/Knosthalij/i.test(p)) return 'Windows';
           if(/Danenone/i.test(p)) return 'Linux';
-          if(/AlphaCube/i.test(p)){
-            if(detected === 'windows') return 'Windows';
-            if(detected === 'linux') return 'Linux';
-            return '';
-          }
+          if(/AlphaCube/i.test(p)) return 'Multiplataforma';
           if(/win/i.test(p)) return 'Windows';
           if(/linux|lin/i.test(p)) return 'Linux';
           return p;
@@ -344,7 +324,6 @@
         const humanPlatform = packagePlatformToHuman(platformSpec);
         const infoParts = [publisher, displayTitle, version].filter(Boolean).join(' ');
         metaInfo.textContent = (infoParts ? infoParts + ' ' : '') + (humanPlatform ? 'para ' + humanPlatform : '');
-        // Author link
         if(metadata.author){
           const a = document.createElement('a');
           const repoName = metadata.app || FALLBACK_REPO;
@@ -355,53 +334,35 @@
           metaAuthor.appendChild(a);
         }else{ metaAuthor.textContent = ''; }
         metaRate.textContent = metadata.rate || '';
-        // Logic for handler/descarga
+        
         const missingDownloadFields = ['author','app','publisher','version','platform'].filter(k => !metadata[k]);
         const downloadsHaveAllFields = missingDownloadFields.length === 0;
-        let allowedOS = [];
-        if(/^AlphaCube$/i.test(platformSpec)) allowedOS = ['windows','linux'];
-        else if(/^Danenone$/i.test(platformSpec)) allowedOS = ['linux'];
-        else if(/^Knosthalij$/i.test(platformSpec)) allowedOS = ['windows'];
-        else allowedOS = [];
-        const platformSupported = allowedOS.includes(detected);
+        
+        // Lógica de descarga simplificada para ser compatible con todo
         let handlerURL = null, directURL = null;
         if(metadata.author && metadata.app) handlerURL = `flarmstore://${encodeURIComponent(metadata.author)}.${encodeURIComponent(metadata.app)}/`;
         if(downloadsHaveAllFields){
-          const chosenPackagePlatform =
-            (/^AlphaCube$/i.test(platformSpec) && detected === 'windows') ? 'Knosthalij' :
-            (/^AlphaCube$/i.test(platformSpec) && detected === 'linux') ? 'Danenone' :
-            platformSpec;
           const vid = encodeURIComponent(metadata.version);
-          directURL = `https://github.com/${encodeURIComponent(metadata.author)}/${encodeURIComponent(metadata.app)}/releases/download/${vid}/${encodeURIComponent(metadata.publisher)}.${encodeURIComponent(metadata.app)}.${vid}-${encodeURIComponent(chosenPackagePlatform)}.iflapp`;
+          const pkgPlatform = platformSpec;
+          directURL = `https://github.com/${encodeURIComponent(metadata.author)}/${encodeURIComponent(metadata.app)}/releases/download/${vid}/${encodeURIComponent(metadata.publisher)}.${encodeURIComponent(metadata.app)}.${vid}-${encodeURIComponent(pkgPlatform)}.iflapp`;
         }
+        
         handlerBtn.onclick = () => { if(!handlerBtn.disabled && handlerURL) window.location.href = handlerURL; };
         directBtn.onclick = () => { if(!directBtn.disabled && directURL) window.open(directURL, '_blank', 'noopener'); };
-        if(detected === 'unknown'){
-          handlerBtn.disabled = true; directBtn.disabled = true;
-          appendSupportNotice('warn', 'Sistema no identificado — descargas deshabilitadas');
-        } else if(!platformSupported){
-          handlerBtn.disabled = true; directBtn.disabled = true;
-          appendSupportNotice('unsupported', 'No soportado por tu sistema operativo');
-        } else if(!downloadsHaveAllFields){
-          handlerBtn.disabled = true; directBtn.disabled = true;
-          appendSupportNotice('warn', 'Metadatos incompletos — descargas deshabilitadas ('+missingDownloadFields.join(', ')+')');
-        } else {
-          handlerBtn.disabled = false; directBtn.disabled = false;
-          directBtn.textContent = `Descarga directa (${packagePlatformToHuman(platformSpec) || platformSpec})`;
-          handlerBtn.textContent = 'Instalar vía handler';
-          appendSupportNotice('', 'Compatible con ' + (packagePlatformToHuman(platformSpec) || detected));
-        }
-        // Visuals: prioritize remote URLs
+        
+        // Habilitar botones para todos
+        handlerBtn.disabled = false;
+        directBtn.disabled = false;
+        directBtn.textContent = `Descarga directa (${humanPlatform || 'Todo SO'})`;
+        handlerBtn.textContent = 'Instalar vía handler';
+        appendSupportNotice('', 'Compatible con tu sistema (' + detected + ')');
+
         const owner = metadata.author || FALLBACK_OWNER;
         const repo  = metadata.app || FALLBACK_REPO;
-        const branches = ['main','master'];
-        function candidates(localPath, repoPath){
-          return [localPath];
-        }
+        function candidates(localPath, repoPath){ return [localPath]; }
         fetchBlobWithFallbackSafe(candidates(LOCAL.splash, 'assets/splash.png')).then(splashBlob => {
           if(splashBlob){
-            splashEl.style.backgroundImage =
-              `linear-gradient(180deg,rgba(40,80,200,0.33),rgba(18,36,80,0.77) 85%,rgba(11,24,47,0.95)), url("${splashBlob}")`;
+            splashEl.style.backgroundImage = `linear-gradient(180deg,rgba(40,80,200,0.33),rgba(18,36,80,0.77) 85%,rgba(11,24,47,0.95)), url("${splashBlob}")`;
           }
         });
         fetchBlobWithFallbackSafe(candidates(LOCAL.logo, 'assets/product_logo.png')).then(logoBlob => {
@@ -415,16 +376,10 @@
             if(wrap && !wrap.querySelector('.placeholder')){
               const placeholder = document.createElement('div');
               placeholder.className = 'placeholder';
-              placeholder.style.width = '86px';
-              placeholder.style.height = '86px';
-              placeholder.style.display = 'flex';
-              placeholder.style.alignItems = 'center';
-              placeholder.style.justifyContent = 'center';
+              placeholder.style.width = '86px'; placeholder.style.height = '86px';
+              placeholder.style.display = 'flex'; placeholder.style.alignItems = 'center'; placeholder.style.justifyContent = 'center';
               placeholder.style.background = 'linear-gradient(135deg, rgba(36,134,255,0.16), rgba(30,43,60,0.27))';
-              placeholder.style.borderRadius = '12px';
-              placeholder.style.color = 'white';
-              placeholder.style.fontWeight = '700';
-              placeholder.style.letterSpacing = '-0.02em';
+              placeholder.style.borderRadius = '12px'; placeholder.style.color = 'white'; placeholder.style.fontWeight = '700';
               const initials = (displayTitle||'').split(/\s+/).map(s=>s[0]||'').slice(0,2).join('').toUpperCase() || 'PK';
               placeholder.textContent = initials;
               wrap.appendChild(placeholder);

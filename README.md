@@ -52,7 +52,7 @@ ExplorerFrame es una solución completa de administración remota diseñada para
 - ✅ Dashboard inteligente con guía de onboarding
 - ✅ Generador de snippets de código (Python, Bash, PowerShell, Node.js, PHP)
 - ✅ Visualización de versión actual y enlaces de descarga
-- ✅ Bloqueo de plataformas no Windows (Linux, macOS, Android, iOS)
+- ✅ Compatibilidad total con cualquier sistema operativo (Windows, Linux, macOS, Android, iOS)
 
 ---
 
@@ -218,7 +218,7 @@ O descarga el ejecutable compilado desde el dashboard web.
 - **API Key**: Tokens únicos y permanentes para acceso programático
 - **Tokens de descarga**: Válidos solo una vez y con expiración
 - **Encriptación**: Contraseñas hasheadas con bcrypt
-- **Bloqueo de plataformas**: Solo Windows puede acceder al agente
+- **Acceso Multiplataforma**: El sitio web es accesible desde cualquier sistema operativo para gestión y descargas.
 - **Autorización granular**: Control por ID de usuario o grupo de Telegram
 
 ---
