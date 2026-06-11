@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ExplorerFrame — Workbench</title>
+  <link rel="icon" type="image/x-icon" href="/app/app-icon.ico" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ExplorerFrame" />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="ExplorerFrame — Workbench" />
+  <meta property="og:description" content="Plataforma de acceso seguro con autenticación segura. Descarga, gestiona y consume la API desde un solo lugar." />
+  <meta property="og:image" content="https://api.screenshotone.com/take?url=https://explorerframe.onrender.com&viewport_width=1280&viewport_height=720&format=jpg&block_ads=true&block_cookie_banners=true" />
+  <meta property="og:url" content="https://explorerframe.onrender.com" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://api.screenshotone.com/take?url=https://explorerframe.onrender.com&viewport_width=1280&viewport_height=720&format=jpg&block_ads=true&block_cookie_banners=true" />
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">⬡ Explorer<span>Frame</span></a>
+  <div class="nav-links">
+    <a href="/login/">Iniciar sesión</a>
+    <a href="/register/" class="btn-nav">Registrarse</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">⚡ v1.2 · API REST  · Auto-Updates</div>
+  <h1>ExplorerFrame<br/>Workbench</h1>
+  <p>Plataforma de acceso seguro con autenticación de dos factores vía Telegram. Descarga, gestiona y consume la API desde un solo lugar.</p>
+  <div class="hero-actions">
+    <a href="/register/" class="btn btn-primary">🚀 Crear cuenta</a>
+    <a href="/login/" class="btn btn-outline">Iniciar sesión</a>
+  </div>
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+      <span style="margin-left:.5rem;color:var(--muted);font-size:.75rem;">explorerframe ~ api</span>
+    </div>
+    <div class="terminal-body">
+      <div><span class="prompt">$ </span><span class="cmd">curl -H "X-API-Key: &lt;token&gt;" \</span></div>
+
+      <div class="out">→ 123456789,987654321,112233445</div>
+      <div style="margin-top:.5rem"><span class="prompt">$ </span><span class="acc">200 OK · text/plain</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="features">
+  <div class="feature-card">
+    <div class="feature-icon">�</div>
+    <h3>Autenticación Segura</h3>
+    <p>Sistema de autenticación robusto para proteger tu cuenta.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">⚡</div>
+    <h3>API REST</h3>
+    <p>Endpoints protegidos por API key. Respuestas limpias en texto plano o JSON.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">📦</div>
+    <h3>ExplorerFrame.exe</h3>
+    <p>Descarga disponible solo para usuarios autenticados.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🗄️</div>
+    <h3>MongoDB</h3>
+    <p>Cuentas y tokens almacenados de forma segura con hashing bcrypt.</p>
+  </div>
+</div>
+
+<!-- Novedades: se renderiza desde NEWS.md en tiempo real -->
+<section class="news-section">
+  <div class="news-inner">
+    <div id="news-container" class="news-loading">
+      <div class="news-spinner"></div>
+      <p>Cargando novedades…</p>
+    </div>
+  </div>
+</section>
+
+<script src="/static/notifications.js"></script>
+</body>
+</html>
