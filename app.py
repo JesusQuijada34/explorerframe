@@ -5,6 +5,8 @@ import requests
 import threading
 import xml.etree.ElementTree as ET
 import jwt
+import hashlib
+import hmac
 import backup_task
 
 from datetime import datetime, timedelta, timezone
@@ -426,6 +428,100 @@ def login_verify():
         error_msg = f"Error en verificación: {str(e)}"
         print(f"[LOGIN_VERIFY ERROR] {error_msg}\n{traceback.format_exc()}")
         return render_template("register_verify.html", username=username, mode="login", error=error_msg), 500
+
+def verify_telegram_auth(data):
+    """
+    Verifica la autenticidad de los datos de autenticación de Telegram.
+    Valida el hash según la documentación de Telegram.
+    """
+    try:
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        if not bot_token:
+            print("[TELEGRAM] BOT_TOKEN no configurado")
+            return False
+
+        if "hash" not in data:
+            return False
+
+        received_hash = data["hash"]
+        data_check_string = "\n".join(
+            f"{k}={v}" for k, v in sorted(data.items()) if k != "hash"
+        )
+        secret_key = hashlib.sha256(bot_token.encode()).digest()
+        expected_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+        return received_hash == expected_hash
+    except Exception as e:
+        print(f"[TELEGRAM VERIFY ERROR] {str(e)}")
+        return False
+
+@app.route("/telegram-login/", methods=["POST"])
+def telegram_login():
+    """
+    Endpoint para autenticación vía Telegram.
+    Recibe los datos del usuario de Telegram y crea/actualiza el usuario.
+    """
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+
+        if not verify_telegram_auth(data):
+            return jsonify({"success": False, "error": "Invalid Telegram authentication"}), 401
+
+        telegram_id = str(data.get("id"))
+        first_name = data.get("first_name", "")
+        last_name = data.get("last_name", "")
+        username = data.get("username", "")
+
+        if not telegram_id:
+            return jsonify({"success": False, "error": "Missing Telegram ID"}), 400
+
+        user = users_col.find_one({"telegram_id": telegram_id})
+
+        if not user:
+            telegram_username = f"@{username}" if username else f"tg_{telegram_id}"
+            existing = users_col.find_one({"telegram_username": telegram_username})
+            if existing:
+                telegram_username = f"tg_{telegram_id}"
+
+            user_doc = {
+                "telegram_id": telegram_id,
+                "telegram_username": telegram_username,
+                "first_name": first_name,
+                "last_name": last_name,
+                "username": username,
+                "created_at": datetime.now(timezone.utc),
+                "password_hash": bcrypt.hashpw(secrets.token_urlsafe(32).encode(), bcrypt.gensalt()).decode(),
+                "verified": True
+            }
+            users_col.insert_one(user_doc)
+            user = user_doc
+        else:
+            users_col.update_one(
+                {"_id": user["_id"]},
+                {"$set": {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "username": username,
+                    "last_login": datetime.now(timezone.utc)
+                }}
+            )
+
+        session.permanent = True
+        session["user"] = user["telegram_username"]
+
+        return jsonify({
+            "success": True,
+            "message": f"Bienvenido {first_name}",
+            "user": user["telegram_username"]
+        }), 200
+
+    except Exception as e:
+        import traceback
+        error_msg = f"Error en Telegram login: {str(e)}"
+        print(f"[TELEGRAM_LOGIN ERROR] {error_msg}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "error": error_msg}), 500
 
 @app.route("/dashboard/")
 @login_required
