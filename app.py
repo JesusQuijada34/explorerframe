@@ -528,6 +528,136 @@ def telegram_login():
         print(f"[TELEGRAM_LOGIN ERROR] {error_msg}\n{traceback.format_exc()}")
         return jsonify({"success": False, "error": error_msg}), 500
 
+# ─── GitHub OAuth ─────────────────────────────────────────────────────────────
+
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
+
+@app.route("/github/")
+def github_login():
+    """Inicia el flujo de OAuth con GitHub."""
+    if not GITHUB_CLIENT_ID:
+        return jsonify({"error": "GitHub OAuth no está configurado"}), 500
+    
+    # Generar estado aleatorio para seguridad CSRF
+    state = secrets.token_urlsafe(32)
+    session["oauth_state"] = state
+    
+    # URL de autorización de GitHub
+    github_auth_url = (
+        f"https://github.com/login/oauth/authorize"
+        f"?client_id={GITHUB_CLIENT_ID}"
+        f"&redirect_uri={request.host_url.rstrip('/')}/github/callback"
+        f"&scope=read:user,user:email"
+        f"&state={state}"
+    )
+    return redirect(github_auth_url)
+
+@app.route("/github/callback/")
+def github_callback():
+    """Callback de GitHub OAuth - intercambia código por token y crea/actualiza usuario."""
+    # Verificar estado CSRF
+    state = request.args.get("state", "")
+    if state != session.get("oauth_state"):
+        return render_template("login.html", error="Estado OAuth inválido. Intenta de nuevo."), 400
+    
+    # Eliminar estado
+    session.pop("oauth_state", None)
+    
+    # Intercambiar código por token
+    code = request.args.get("code", "")
+    if not code:
+        return render_template("login.html", error="No se recibió código de autorización de GitHub."), 400
+    
+    try:
+        # Intercambiar código por access token
+        token_response = requests.post(
+            "https://github.com/login/oauth/access_token",
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            },
+            json={
+                "client_id": GITHUB_CLIENT_ID,
+                "client_secret": GITHUB_CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": f"{request.host_url.rstrip('/')}/github/callback/"
+            },
+            timeout=10
+        )
+        token_data = token_response.json()
+        
+        if "access_token" not in token_data:
+            return render_template("login.html", 
+                error=f"Error de GitHub: {token_data.get('error_description', 'Desconocido')}"), 400
+        
+        access_token = token_data["access_token"]
+        
+        # Obtener información del usuario
+        user_response = requests.get(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json"
+            },
+            timeout=10
+        )
+        user_data = user_response.json()
+        
+        github_id = str(user_data.get("id", ""))
+        github_username = user_data.get("login", "")
+        github_email = user_data.get("email", "")
+        github_name = user_data.get("name", github_username)
+        
+        if not github_id:
+            return render_template("login.html", error="No se pudo obtener ID de GitHub."), 400
+        
+        # Buscar o crear usuario
+        user = users_col.find_one({"github_id": github_id})
+        
+        if not user:
+            # Crear nuevo usuario con prefijo gh_
+            gh_username = f"gh_{github_username}"
+            existing = users_col.find_one({"username": gh_username})
+            if existing:
+                gh_username = f"gh_{github_id}"
+            
+            user_doc = {
+                "github_id": github_id,
+                "username": gh_username,
+                "github_username": github_username,
+                "github_email": github_email,
+                "first_name": github_name,
+                "created_at": datetime.now(timezone.utc),
+                "password_hash": bcrypt.hashpw(secrets.token_urlsafe(32).encode(), bcrypt.gensalt()).decode(),
+                "verified": True
+            }
+            users_col.insert_one(user_doc)
+            user = user_doc
+        else:
+            # Actualizar información
+            users_col.update_one(
+                {"_id": user["_id"]},
+                {"$set": {
+                    "github_username": github_username,
+                    "github_email": github_email,
+                    "first_name": github_name,
+                    "last_login": datetime.now(timezone.utc)
+                }}
+            )
+        
+        # Crear sesión
+        session.permanent = True
+        session["user"] = user["username"]
+        
+        return redirect(url_for("dashboard"))
+        
+    except Exception as e:
+        import traceback
+        error_msg = f"Error en GitHub login: {str(e)}"
+        print(f"[GITHUB_LOGIN ERROR] {error_msg}\n{traceback.format_exc()}")
+        return render_template("login.html", error="Error al conectar con GitHub. Intenta de nuevo."), 500
+
 @app.route("/dashboard/")
 def dashboard():
     user = None
