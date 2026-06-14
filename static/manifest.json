@@ -1,0 +1,16 @@
+{
+  "name": "ExplorerFrame Workbench",
+  "short_name": "ExplorerFrame",
+  "description": "Plataforma de acceso seguro con autenticación segura",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#6c63ff",
+  "icons": [
+    {
+      "src": "/app/app-icon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}
