@@ -538,11 +538,6 @@ def dashboard():
     is_guest = not session.get("user")
     return render_template("dashboard.html", user=user, base_url=base_url, release=release, is_guest=is_guest)
 
-@app.route("/dev-console/")
-@login_required
-def dev_console():
-    return render_template("dev_console.html")
-
 @app.route("/logout/")
 def logout():
     session.clear()
