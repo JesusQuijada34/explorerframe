@@ -180,11 +180,11 @@ def _fetch_release_info():
     try:
         # 1. Leer details.xml desde la rama principal del repo
         xml_url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/details.xml"
-        r = requests.get(xml_url, timeout=10)
+        r = requests.get(xml_url, timeout=10, auth=())
         if r.status_code != 200:
             # intentar rama master
             xml_url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/details.xml"
-            r = requests.get(xml_url, timeout=10)
+            r = requests.get(xml_url, timeout=10, auth=())
         if r.status_code != 200:
             return None, None, None
 
@@ -195,13 +195,13 @@ def _fetch_release_info():
 
         # 2. Buscar el release con ese tag en la API de GitHub
         api_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/tags/{version}"
-        api_r = requests.get(api_url, timeout=10,
+        api_r = requests.get(api_url, timeout=10, auth=(),
                               headers={"Accept": "application/vnd.github+json"})
 
         # Si no existe ese tag exacto, intentar el latest
         if api_r.status_code == 404:
             api_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-            api_r = requests.get(api_url, timeout=10,
+            api_r = requests.get(api_url, timeout=10, auth=(),
                                   headers={"Accept": "application/vnd.github+json"})
 
         if api_r.status_code != 200:
