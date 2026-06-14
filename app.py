@@ -29,9 +29,14 @@ app = Flask(__name__)
 def start_backup_thread():
     SOURCE_DIRECTORY = os.getenv("BACKUP_SOURCE_DIR", "./data_to_backup")
     BACKUP_DESTINATION = os.getenv("BACKUP_DESTINATION_DIR", "./backups")
-    SERVER_UPLOAD_URL = os.getenv("BACKUP_UPLOAD_URL", "http://localhost:5000/api/v1/upload_backup")
-    API_KEY = os.getenv("BACKUP_API_KEY", "your_backup_api_key") # Usar una API Key específica para el backup
+    SERVER_UPLOAD_URL = os.getenv("BACKUP_UPLOAD_URL", "")
+    API_KEY = os.getenv("BACKUP_API_KEY", "")
     INTERVAL_SECONDS = int(os.getenv("BACKUP_INTERVAL_SECONDS", 3600))
+
+    # Solo iniciar si hay URL y API key configurados
+    if not SERVER_UPLOAD_URL or not API_KEY or SERVER_UPLOAD_URL == "http://localhost:5000/api/v1/upload_backup":
+        print("Backup automático deshabilitado: BACKUP_UPLOAD_URL o BACKUP_API_KEY no configurados.")
+        return
 
     os.makedirs(SOURCE_DIRECTORY, exist_ok=True)
     os.makedirs(BACKUP_DESTINATION, exist_ok=True)
@@ -42,7 +47,7 @@ def start_backup_thread():
     backup_thread.start()
     print("Tarea de respaldo gradual iniciada.")
 
-# Iniciar la tarea de respaldo cuando la aplicación Flask se inicie
+# Iniciar la tarea de respaldo cuando la aplicación Flask se inicie (solo si está configurado)
 with app.app_context():
     start_backup_thread()
 
@@ -524,12 +529,19 @@ def telegram_login():
         return jsonify({"success": False, "error": error_msg}), 500
 
 @app.route("/dashboard/")
-@login_required
 def dashboard():
-    user = users_col.find_one({"username": session["user"]})
+    user = None
+    if session.get("user"):
+        user = users_col.find_one({"username": session["user"]})
     base_url = os.getenv("APP_BASE_URL", request.host_url.rstrip("/"))
-    release  = get_release_info()
-    return render_template("dashboard.html", user=user, base_url=base_url, release=release)
+    release = get_release_info()
+    is_guest = not session.get("user")
+    return render_template("dashboard.html", user=user, base_url=base_url, release=release, is_guest=is_guest)
+
+@app.route("/dev-console/")
+@login_required
+def dev_console():
+    return render_template("dev_console.html")
 
 @app.route("/logout/")
 def logout():
