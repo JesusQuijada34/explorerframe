@@ -115,30 +115,41 @@ def _save_session_to_jwt(response):
 # ─── MongoDB ──────────────────────────────────────────────────────────────────
 # Conexión lazy: se conecta solo cuando se necesita (importante para Render)
 _mongo_client = None
+_mongo_status = {"connected": False, "error": None, "last_check": None}
 
 def get_mongo_db():
     """Obtiene la conexión a MongoDB (lazy initialization)"""
-    global _mongo_client
+    global _mongo_client, _mongo_status
     if _mongo_client is None:
         try:
             _mongo_client = MongoClient(
                 os.getenv("MONGO_URI"),
                 tlsAllowInvalidCertificates=True,
-                serverSelectionTimeoutMS=30000,
-                connectTimeoutMS=30000,
-                socketTimeoutMS=30000,
-                maxPoolSize=10,
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=5000,
+                socketTimeoutMS=5000,
+                maxPoolSize=5,
                 minPoolSize=1,
                 retryWrites=False,
-                maxIdleTimeMS=45000
+                maxIdleTimeMS=30000
             )
             # Verificar que funciona
             _mongo_client.admin.command('ping')
+            _mongo_status = {"connected": True, "error": None, "last_check": datetime.now()}
+            print("[MONGO] Conexión exitosa a MongoDB")
         except Exception as e:
+            _mongo_status = {"connected": False, "error": str(e), "last_check": datetime.now()}
             print(f"[MONGO ERROR] {str(e)}")
             _mongo_client = None
             raise
     return _mongo_client["explorerframe"]
+
+def reset_mongo_connection():
+    """Reinicia la conexión a MongoDB"""
+    global _mongo_client, _mongo_status
+    _mongo_client = None
+    _mongo_status = {"connected": False, "error": None, "last_check": None}
+    print("[MONGO] Conexión reseteada. Se intentará reconectar en la siguiente petición.")
 
 # Lazy properties
 @property
@@ -277,6 +288,39 @@ def login_required(f):
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated
+
+# ─── Health Check & DB Status ─────────────────────────────────────────────────
+
+@app.route("/api/health/")
+def health_check():
+    """Estado de la aplicación y base de datos"""
+    return jsonify({
+        "status": "ok",
+        "mongo": _mongo_status,
+        "session_active": session.get("user") is not None
+    })
+
+@app.route("/api/db/retry/")
+def db_retry():
+    """Fuerza un reintento de conexión a MongoDB"""
+    reset_mongo_connection()
+    try:
+        # Intentar conectar
+        db = get_mongo_db()
+        db.command("ping")
+        return jsonify({"success": True, "message": "Conexión a MongoDB restaurada"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/db/ping/")
+def db_ping():
+    """Hace un ping simple a MongoDB para verificar conexión"""
+    try:
+        db = get_mongo_db()
+        db.command("ping")
+        return jsonify({"success": True, "message": "MongoDB responde correctamente"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # ─── Pages ────────────────────────────────────────────────────────────────────
 
@@ -613,7 +657,12 @@ def github_callback():
             return render_template("login.html", error="No se pudo obtener ID de GitHub."), 400
         
         # Buscar o crear usuario
-        user = users_col.find_one({"github_id": github_id})
+        try:
+            user = users_col.find_one({"github_id": github_id})
+        except Exception as mongo_err:
+            print(f"[GITHUB_LOGIN] MongoDB error: {mongo_err}")
+            return render_template("login.html", 
+                error="Error de base de datos. Asegúrate de que MongoDB Atlas esté configurado correctamente."), 500
         
         if not user:
             # Crear nuevo usuario con prefijo gh_
