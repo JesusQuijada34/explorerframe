@@ -838,6 +838,45 @@ def api_news_notify():
         print(f"[NEWS NOTIFY ERROR] {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/v1/status")
+def api_status():
+    """Endpoint para verificar el estado del servidor."""
+    try:
+        # Verificar conexión a MongoDB
+        mongo_status = "connected"
+        try:
+            get_mongo_db()
+        except Exception as e:
+            mongo_status = f"error: {str(e)}"
+        
+        # Verificar archivo de descarga
+        exe_available = os.path.exists(os.path.join(app.root_path, "ExplorerFrame.exe"))
+        
+        # Verificar versión de la app
+        version = "1.2"
+        try:
+            xml_path = os.path.join(app.root_path, "details.xml")
+            if os.path.exists(xml_path):
+                tree = ET.parse(xml_path)
+                root = tree.getroot()
+                ver = root.findtext("version")
+                if ver:
+                    version = ver.strip()
+        except:
+            pass
+        
+        return jsonify({
+            "status": "online",
+            "server": "ExplorerFrame",
+            "version": version,
+            "mongodb": mongo_status,
+            "download_available": exe_available,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+    except Exception as e:
+        print(f"[STATUS API ERROR] {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 # ─── Bot Telegram 24/7 ────────────────────────────────────────────────────────
 

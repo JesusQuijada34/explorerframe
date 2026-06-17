@@ -1,5 +1,5 @@
 /**
- * ExplorerFrame — Notificaciones + NEWS.md en tiempo real
+ * ExplorerFrame — Notificaciones + NEWS.md en tiempo real + Server Status
  */
 
 'use strict';
@@ -21,6 +21,82 @@ function sendSystemNotification(title, body, tag = 'ef-notification') {
       renotify: true
     });
   }
+}
+
+// ── Server Status Check (cada 10 segundos) ─────────────────────────────────
+let _lastServerStatus = null;
+let _serverNotificationCount = 0;
+
+async function checkServerStatus() {
+  try {
+    const res = await fetch('/api/v1/status', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    
+    const data = await res.json();
+    
+    // Solo notificar si el estado cambió o si es la primera verificación
+    if (_lastServerStatus === null) {
+      // Primera verificación - solo mostrar si el servidor está online
+      if (data.status === 'online') {
+        sendSystemNotification(
+          '🟢 ExplorerFrame Online',
+          `Servidor activo v${data.version} — MongoDB: ${data.mongodb === 'connected' ? 'Conectado' : 'Error'}`,
+          'server-status-online'
+        );
+      }
+    } else if (data.status !== _lastServerStatus.status) {
+      // El estado cambió
+      if (data.status === 'online') {
+        sendSystemNotification(
+          '🟢 Servidor恢复了',
+          `ExplorerFrame v${data.version} está nuevamente en línea`,
+          'server-status-recovery'
+        );
+      } else {
+        sendSystemNotification(
+          '🔴 Servidor caído',
+          'ExplorerFrame no está respondiendo. Intenta más tarde.',
+          'server-status-offline'
+        );
+      }
+    }
+    
+    _lastServerStatus = data;
+    
+    // Mostrar indicador de estado en la UI (si existe el elemento)
+    const statusIndicator = document.getElementById('server-status-indicator');
+    if (statusIndicator) {
+      statusIndicator.textContent = data.status === 'online' ? '🟢 Online' : '🔴 Offline';
+      statusIndicator.style.color = data.status === 'online' ? 'var(--success)' : 'var(--error)';
+    }
+    
+  } catch (err) {
+    console.warn('[STATUS] error:', err);
+    
+    // Si falla la conexión y antes estaba online, notificar
+    if (_lastServerStatus && _lastServerStatus.status === 'online') {
+      sendSystemNotification(
+        '⚠️ Sin conexión',
+        'No se puede conectar al servidor de ExplorerFrame',
+        'server-status-error'
+      );
+      _lastServerStatus = { status: 'error' };
+    }
+    
+    const statusIndicator = document.getElementById('server-status-indicator');
+    if (statusIndicator) {
+      statusIndicator.textContent = '⚠️ Sin conexión';
+      statusIndicator.style.color = 'var(--warning)';
+    }
+  }
+}
+
+function initServerStatusCheck() {
+  // Verificar inmediatamente
+  checkServerStatus();
+  
+  // Luego cada 10 segundos
+  setInterval(checkServerStatus, 10_000);
 }
 
 // ── Service Worker ─────────────────────────────────────────────────────────
@@ -174,6 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
   requestNotificationPermission();
   registerServiceWorker();
   initNewsRealTime();
+  initServerStatusCheck(); // Verificar estado del servidor cada 10 segundos
 });
 
 

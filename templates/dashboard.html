@@ -36,7 +36,10 @@
 <div class="dashboard">
   <div class="dash-header">
     <h1>Bienvenido, <span>{% if is_guest %}Invitado{% else %}{{ user.username }}{% endif %}</span></h1>
-    <span style="font-size:0.8rem;color:{% if is_guest %}var(--text-tertiary){% else %}var(--success){% endif %};">{% if is_guest %}○ Modo solo lectura{% else %}● Sesión activa{% endif %}</span>
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+      <span id="server-status-indicator" style="font-size:0.8rem;color:var(--text-tertiary);">⏳ Verificando...</span>
+      <span style="font-size:0.8rem;color:{% if is_guest %}var(--text-tertiary){% else %}var(--success){% endif %};">{% if is_guest %}○ Modo solo lectura{% else %}● Sesión activa{% endif %}</span>
+    </div>
   </div>
 
   {% if is_guest %}

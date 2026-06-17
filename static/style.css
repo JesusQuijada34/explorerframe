@@ -728,15 +728,73 @@ nav.scrolled {
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); background-clip: padding-box; }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Mobile & Responsive Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
   nav { padding: 0 1rem; }
-  .hero { padding: 5rem 1.5rem 3rem; }
-  .hero h1 { font-size: 2rem; }
+  .hero { padding: 5rem 1rem 3rem; }
+  .hero h1 { font-size: 1.75rem; }
+  .hero p { font-size: 0.9rem; padding: 0 0.5rem; }
+  .hero-badge { font-size: 0.7rem; padding: 0.3rem 0.75rem; }
+  .hero-actions { flex-direction: column; gap: 0.75rem; width: 100%; max-width: 300px; }
+  .hero-actions .btn { width: 100%; text-align: center; justify-content: center; }
+  .terminal { margin: 1.5rem 0.5rem; }
+  .terminal-body { font-size: 0.75rem; padding: 1rem; }
   .features { padding: 0 1rem; grid-template-columns: 1fr; }
-  .auth-card { padding: 1.75rem; margin: 0 1rem; }
-  .news-title { font-size: 1.75rem; }
-  .news-card { padding: 1.5rem; }
+  .feature-card { padding: 1.25rem; }
+  .feature-card h3 { font-size: 1rem; }
+  .feature-card p { font-size: 0.85rem; }
+  .auth-wrapper { padding: 4.5rem 1rem 2rem; }
+  .auth-card { padding: 1.5rem; max-width: 100%; }
+  .auth-card .logo h2 { font-size: 1.25rem; }
+  .form-group input { padding: 0.65rem 0.85rem; font-size: 16px; /* Prevent iOS zoom */ }
+  .telegram-login-wrapper { padding: 1rem; }
+  .social-login .btn { padding: 0.75rem 1rem; font-size: 0.85rem; }
+  .news-title { font-size: 1.5rem; }
+  .news-card { padding: 1.25rem; }
+  .news-card-title { font-size: 1.1rem; }
   .pwa-install-prompt { bottom: 1rem; right: 1rem; left: 1rem; max-width: none; }
-  .dash-header { flex-direction: column; align-items: flex-start; }
-  .download-section { flex-direction: column; text-align: center; }
+  .dash-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .dash-grid { grid-template-columns: 1fr; }
+  .dash-card { padding: 1.25rem; }
+  .download-section { flex-direction: column; text-align: center; padding: 1.5rem; }
+  .api-section { padding: 1.25rem; }
+  .endpoint-row { padding: 0.85rem 1rem; flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .endpoint-path { font-size: 0.8rem; min-width: auto; }
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab-btn { white-space: nowrap; padding: 0.4rem 0.75rem; font-size: 0.75rem; }
+  .code-block { font-size: 0.7rem; padding: 1rem; overflow-x: auto; }
+  .nav-links { gap: 0.25rem; }
+  .nav-links a { padding: 0.35rem 0.5rem; font-size: 0.8rem; }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .hero h1 { font-size: 1.5rem; }
+  .hero-badge { font-size: 0.65rem; }
+  .auth-card { padding: 1.25rem; }
+  .dash-card .value { font-size: 1.5rem; }
+  .dash-card .value.mono { font-size: 0.75rem; }
+  .btn { padding: 0.6rem 1rem; font-size: 0.85rem; }
+  .alert { padding: 0.85rem 1rem; font-size: 0.8rem; }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .glass-card:hover { transform: none; }
+  .glass-card:hover::before { opacity: 0.5; }
+  .glass-card:hover { background: var(--win-surface); }
+  .btn:hover { transform: none; }
+  .btn:hover::before { opacity: 0; }
+  .nav-links a:hover { background: transparent; }
+  .nav-links a:hover::after { width: 0; }
+}
+
+/* Ensure form inputs don't zoom on iOS */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
