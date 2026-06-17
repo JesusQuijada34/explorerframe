@@ -51,7 +51,14 @@ def start_backup_thread():
 with app.app_context():
     start_backup_thread()
 
-app.secret_key = os.getenv("SECRET_KEY", secrets.token_hex(32))
+# Generar clave secreta segura (mínimo 32 bytes para JWT HS256)
+_configured_secret = os.getenv("SECRET_KEY", "")
+if len(_configured_secret) >= 32:
+    app.secret_key = _configured_secret
+else:
+    app.secret_key = secrets.token_hex(32)
+    if _configured_secret:
+        print(f"[WARN] SECRET_KEY demasiado corta ({len(_configured_secret)} bytes). Usando clave generada.")
 
 # ─── JWT-based sessions (sin almacenamiento en servidor) ──────────────────────
 app.config["SESSION_COOKIE_HTTPONLY"] = True
