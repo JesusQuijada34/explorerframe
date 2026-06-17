@@ -588,17 +588,25 @@ GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
 def github_login():
     """Inicia el flujo de OAuth con GitHub."""
     if not GITHUB_CLIENT_ID:
-        return jsonify({"error": "GitHub OAuth no está configurado"}), 500
+        print("[GITHUB OAuth] Error: GITHUB_CLIENT_ID no configurado")
+        return render_template("login.html", error="GitHub OAuth no está configurado en el servidor."), 500
+    
+    if not GITHUB_CLIENT_SECRET:
+        print("[GITHUB OAuth] Error: GITHUB_CLIENT_SECRET no configurado")
+        return render_template("login.html", error="GitHub OAuth no está configurado correctamente."), 500
     
     # Generar estado aleatorio para seguridad CSRF
     state = secrets.token_urlsafe(32)
     session["oauth_state"] = state
     
+    callback_url = f"{request.host_url.rstrip('/')}/github/callback"
+    print(f"[GITHUB OAuth] Redirect URI: {callback_url}")
+    
     # URL de autorización de GitHub
     github_auth_url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={GITHUB_CLIENT_ID}"
-        f"&redirect_uri={request.host_url.rstrip('/')}/github/callback"
+        f"&redirect_uri={callback_url}"
         f"&scope=read:user,user:email"
         f"&state={state}"
     )
@@ -610,17 +618,29 @@ def github_callback():
     # Verificar estado CSRF
     state = request.args.get("state", "")
     if state != session.get("oauth_state"):
+        print(f"[GITHUB Callback] Estado CSRF inválido. Recibido: {state[:20]}..., Esperado: {str(session.get('oauth_state'))[:20]}...")
         return render_template("login.html", error="Estado OAuth inválido. Intenta de nuevo."), 400
     
     # Eliminar estado
     session.pop("oauth_state", None)
     
+    # Verificar si el usuario canceló
+    error = request.args.get("error", "")
+    if error:
+        error_desc = request.args.get("error_description", "Cancelado por el usuario")
+        print(f"[GITHUB Callback] Usuario canceló: {error_desc}")
+        return render_template("login.html", error=f"Login cancelado: {error_desc}"), 400
+    
     # Intercambiar código por token
     code = request.args.get("code", "")
     if not code:
+        print("[GITHUB Callback] No se recibió código de autorización")
         return render_template("login.html", error="No se recibió código de autorización de GitHub."), 400
     
     try:
+        callback_url = f"{request.host_url.rstrip('/')}/github/callback"
+        print(f"[GITHUB Callback] Intercambiando código por token...")
+        
         # Intercambiar código por access token
         token_response = requests.post(
             "https://github.com/login/oauth/access_token",
@@ -632,28 +652,38 @@ def github_callback():
                 "client_id": GITHUB_CLIENT_ID,
                 "client_secret": GITHUB_CLIENT_SECRET,
                 "code": code,
-                "redirect_uri": f"{request.host_url.rstrip('/')}/github/callback/"
+                "redirect_uri": callback_url
             },
-            timeout=10
+            timeout=15
         )
+        
+        print(f"[GITHUB Callback] Token response status: {token_response.status_code}")
         token_data = token_response.json()
+        print(f"[GITHUB Callback] Token response: {list(token_data.keys())}")
         
         if "access_token" not in token_data:
+            error_msg = token_data.get('error_description', token_data.get('error', 'Desconocido'))
+            print(f"[GITHUB Callback] Error en token: {error_msg}")
             return render_template("login.html", 
-                error=f"Error de GitHub: {token_data.get('error_description', 'Desconocido')}"), 400
+                error=f"Error de GitHub: {error_msg}"), 400
         
         access_token = token_data["access_token"]
         
         # Obtener información del usuario
+        print("[GITHUB Callback] Obteniendo información del usuario...")
         user_response = requests.get(
             "https://api.github.com/user",
             headers={
                 "Authorization": f"Bearer {access_token}",
-                "Accept": "application/vnd.github+json"
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28"
             },
-            timeout=10
+            timeout=15
         )
+        
+        print(f"[GITHUB Callback] User response status: {user_response.status_code}")
         user_data = user_response.json()
+        print(f"[GITHUB Callback] User data keys: {list(user_data.keys())}")
         
         github_id = str(user_data.get("id", ""))
         github_username = user_data.get("login", "")
@@ -661,6 +691,7 @@ def github_callback():
         github_name = user_data.get("name", github_username)
         
         if not github_id:
+            print("[GITHUB Callback] No se pudo obtener ID de GitHub")
             return render_template("login.html", error="No se pudo obtener ID de GitHub."), 400
         
         # Buscar o crear usuario
@@ -690,6 +721,7 @@ def github_callback():
             }
             users_col.insert_one(user_doc)
             user = user_doc
+            print(f"[GITHUB Callback] Nuevo usuario creado: {gh_username}")
         else:
             # Actualizar información
             users_col.update_one(
@@ -701,6 +733,7 @@ def github_callback():
                     "last_login": datetime.now(timezone.utc)
                 }}
             )
+            print(f"[GITHUB Callback] Usuario actualizado: {user['username']}")
         
         # Crear sesión
         session.permanent = True
@@ -708,6 +741,9 @@ def github_callback():
         
         return redirect(url_for("dashboard"))
         
+    except requests.exceptions.Timeout:
+        print("[GITHUB Callback] Timeout conectando con GitHub")
+        return render_template("login.html", error="Timeout conectando con GitHub. Intenta de nuevo."), 500
     except Exception as e:
         import traceback
         error_msg = f"Error en GitHub login: {str(e)}"
