@@ -16,6 +16,88 @@
     .copy-btn { position:absolute; top:0.75rem; right:0.75rem; background: var(--win-surface); border:1px solid var(--win-border); color: var(--text-secondary); padding:0.3rem 0.75rem; border-radius:var(--radius-md); font-size:0.75rem; cursor:pointer; transition:all var(--duration-fast); }
     .copy-btn:hover { color:var(--accent); border-color:var(--accent); }
     .kw  { color:#c792ea; } .str { color:#c3e88d; } .cm  { color:#546e7a; font-style:italic; } .fn  { color:#82aaff; } .var { color:#f78c6c; }
+    
+    /* Dashboard Professional Styles */
+    .dash-profile {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      background: var(--win-surface);
+      border: 1px solid var(--win-border);
+      border-radius: var(--radius-xl);
+      margin-bottom: 1.5rem;
+    }
+    .dash-profile-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 1.25rem;
+      color: #000;
+    }
+    .dash-profile-info { flex: 1; }
+    .dash-profile-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .dash-profile-meta { font-size: 0.8rem; color: var(--text-secondary); display: flex; gap: 1rem; align-items: center; }
+    .dash-profile-meta .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      background: rgba(108, 203, 95, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(108, 203, 95, 0.25);
+    }
+    .dash-profile-meta .status-badge.guest {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-tertiary);
+      border-color: var(--win-border);
+    }
+    .dash-section {
+      background: var(--win-surface);
+      border: 1px solid var(--win-border);
+      border-radius: var(--radius-xl);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .dash-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--win-border);
+    }
+    .dash-section-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .dash-section-title svg { color: var(--accent); }
+    .stat-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .stat-item { flex: 1; min-width: 150px; }
+    .stat-label { font-size: 0.7rem; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; }
+    .stat-value { font-size: 1rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; word-break: break-all; }
+    .stat-value.success { color: var(--success); }
+    .stat-value.accent { color: var(--accent); }
+    .info-callout {
+      background: rgba(96, 205, 255, 0.08);
+      border: 1px solid rgba(96, 205, 255, 0.2);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .info-callout p { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6; margin: 0; }
+    .info-callout p strong { color: var(--accent); }
   </style>
 </head>
 <body>
@@ -34,44 +116,54 @@
 </nav>
 
 <div class="dashboard">
-  <div class="dash-header">
-    <h1>Bienvenido, <span>{% if is_guest %}Invitado{% else %}{{ user.username }}{% endif %}</span></h1>
-    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
-      <span id="server-status-indicator" style="font-size:0.8rem;color:var(--text-tertiary);">⏳ Verificando...</span>
-      <span style="font-size:0.8rem;color:{% if is_guest %}var(--text-tertiary){% else %}var(--success){% endif %};">{% if is_guest %}○ Modo solo lectura{% else %}● Sesión activa{% endif %}</span>
+  <!-- Perfil del usuario -->
+  <div class="dash-profile">
+    <div class="dash-profile-avatar">{% if is_guest %}👤{% else %}{{ user.username[0]|upper }}{% endif %}</div>
+    <div class="dash-profile-info">
+      <div class="dash-profile-name">{% if is_guest %}Invitado{% else %}{{ user.username }}{% endif %}</div>
+      <div class="dash-profile-meta">
+        <span class="status-badge {% if is_guest %}guest{% endif %}">
+          {% if is_guest %}○{% else %}●{% endif %} {% if is_guest %}Solo lectura{% else %}Autenticado{% endif %}
+        </span>
+        <span id="server-status-indicator" style="font-size:0.75rem;color:var(--text-tertiary);">⏳</span>
+      </div>
     </div>
   </div>
 
   {% if is_guest %}
-  <div class="glass-card" style="padding:1.5rem;margin-bottom:2rem;border-left:3px solid var(--accent);">
-    <h3 style="margin-bottom:0.5rem;">Modo invitado activo</h3>
-    <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">Estás explorando en modo solo lectura. Para acceder a la API y descargar, necesitas <a href="/login/" style="color:var(--accent);">iniciar sesión</a> o <a href="/register/" style="color:var(--accent);">crear una cuenta</a>.</p>
-    <a href="/login/" class="btn btn-primary">Iniciar sesión</a>
-  </div>
-  {% else %}
-  <div class="api-section glass-card" style="margin-bottom:1.5rem;">
-    <h2>🚀 Cómo empezar</h2>
-    <ol style="font-size:0.85rem;color:var(--text-secondary);line-height:2;padding-left:1.2rem;">
-      <li>Copia tu <strong>API Key</strong> de abajo — es permanente y única para tu cuenta.</li>
-      <li>Usa los scripts de abajo para descargar el ejecutable automáticamente.</li>
-      <li>La sesión dura <strong>30 días</strong>. Al expirar, vuelve a <a href="/login/">iniciar sesión</a>.</li>
-    </ol>
+  <div class="info-callout">
+    <p>Estás explorando en <strong>modo solo lectura</strong>. Para acceder a la API y descargar, necesitas <a href="/login/" style="color:var(--accent);">iniciar sesión</a> o <a href="/register/" style="color:var(--accent);">crear una cuenta</a>.</p>
   </div>
   {% endif %}
 
-  <div class="dash-grid">
-    <div class="dash-card glass-card">
-      <h3>Estado</h3>
-      <div class="value {% if is_guest %}accent{% else %}green{% endif %}">{% if is_guest %}○ Invitado{% else %}● Autenticado{% endif %}</div>
+  <!-- Stats -->
+  <div class="dash-section">
+    <div class="dash-section-header">
+      <div class="dash-section-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Información de cuenta
+      </div>
     </div>
-    <div class="dash-card glass-card">
-      <h3>API Key</h3>
-      <div class="value mono" id="apikey">{% if is_guest %}<span style="color:var(--text-disabled)">Inicia sesión para ver</span>{% else %}{{ user.api_key }}{% endif %}</div>
+    <div class="stat-row">
+      <div class="stat-item">
+        <div class="stat-label">Estado</div>
+        <div class="stat-value {% if is_guest %}accent{% else %}success{% endif %}">{% if is_guest %}Modo invitado{% else %}Activo{% endif %}</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">API Key</div>
+        <div class="stat-value">{% if is_guest %}<span style="color:var(--text-disabled)">—</span>{% else %}{{ user.api_key }}{% endif %}</div>
+      </div>
     </div>
   </div>
 
-  <div class="api-section glass-card">
-    <h2>📡 Endpoints disponibles</h2>
+  <!-- Endpoints -->
+  <div class="dash-section">
+    <div class="dash-section-header">
+      <div class="dash-section-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        API Endpoints
+      </div>
+    </div>
     <div class="endpoint-row">
       <span class="method-badge">GET</span>
       <span class="endpoint-path">/api/v1/ids</span>
@@ -81,19 +173,33 @@
     <div class="endpoint-row">
       <span class="method-badge post">POST</span>
       <span class="endpoint-path">/api/v1/download/token</span>
-      <span class="endpoint-desc">Genera un token de descarga de un solo uso (10 min)</span>
+      <span class="endpoint-desc">Token de descarga (10 min)</span>
     </div>
     {% endif %}
     <div class="endpoint-row">
       <span class="method-badge">GET</span>
       <span class="endpoint-path">/api/v1/download/status</span>
-      <span class="endpoint-desc">Verifica si ExplorerFrame.exe está disponible</span>
+      <span class="endpoint-desc">Estado de descarga</span>
+    </div>
+    <div class="endpoint-row">
+      <span class="method-badge">GET</span>
+      <span class="endpoint-path">/api/v1/status</span>
+      <span class="endpoint-desc">Estado del servidor</span>
     </div>
   </div>
 
   {% if not is_guest %}
-  <div class="api-section glass-card">
-    <h2>⬇ Scripts de descarga</h2>
+  <!-- Scripts de descarga -->
+  <div class="dash-section">
+    <div class="dash-section-header">
+      <div class="dash-section-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Scripts de descarga
+      </div>
+    </div>
+    <div class="info-callout" style="margin-top:0;">
+      <p>Copia tu <strong>API Key</strong> y usa el script para descargar <strong>ExplorerFrame.exe</strong>. La sesión dura 30 días.</p>
+    </div>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('python', this)">Python</button>
       <button class="tab-btn" onclick="switchTab('bash', this)">Bash</button>
@@ -127,9 +233,16 @@ curl -s -X POST <span class="str">"{{ base_url }}/api/v1/download/token"</span> 
     </div>
   </div>
   {% else %}
-  <div class="api-section glass-card">
-    <h2>⬇ Descargar ExplorerFrame.exe</h2>
-    <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">Inicia sesión para acceder a la descarga.</p>
+  <div class="dash-section">
+    <div class="dash-section-header">
+      <div class="dash-section-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Descargar
+      </div>
+    </div>
+    <div class="info-callout" style="margin-top:0;">
+      <p>Inicia sesión para acceder a la descarga de <strong>ExplorerFrame.exe</strong>.</p>
+    </div>
     <a href="/register/" class="btn btn-primary">Crear cuenta gratuita</a>
   </div>
   {% endif %}

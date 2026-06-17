@@ -6,6 +6,48 @@
   <title>Iniciar sesión — ExplorerFrame</title>
   <link rel="icon" type="image/x-icon" href="/app/app-icon.ico" />
   <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .auth-split { display: flex; gap: 0; width: 100%; max-width: 800px; }
+    .auth-panel { flex: 1; padding: 2.5rem; }
+    .auth-panel-left { background: var(--win-surface); }
+    .auth-panel-right { background: rgba(0, 0, 0, 0.2); }
+    .auth-divider-v {
+      width: 1px;
+      background: linear-gradient(to bottom, transparent, var(--win-border-strong), transparent);
+      margin: 1rem 0;
+    }
+    .social-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.6rem 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--duration-fast);
+      text-decoration: none;
+      margin-bottom: 0.75rem;
+      border: 1px solid var(--win-border);
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--text-primary);
+    }
+    .social-btn:hover { background: var(--win-surface); border-color: var(--win-border-strong); }
+    .social-btn svg { width: 18px; height: 18px; }
+    .social-btn.telegram { border-color: rgba(0, 136px, 204, 0.4); }
+    .social-btn.telegram:hover { background: rgba(0, 136px, 204, 0.1); }
+    .social-btn.github:hover { border-color: var(--text-secondary); }
+    .social-label { font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 0.75rem; text-align: center; }
+    .login-options { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--win-border); }
+    @media (max-width: 768px) {
+      .auth-split { flex-direction: column; max-width: 440px; }
+      .auth-divider-v { width: 100%; height: 1px; background: linear-gradient(to right, transparent, var(--win-border-strong), transparent); margin: 0 1rem; }
+      .auth-panel-left { padding: 1.5rem; }
+      .auth-panel-right { padding: 1.5rem; }
+    }
+  </style>
 </head>
 <body>
 <nav>
@@ -22,75 +64,83 @@
 </nav>
 
 <div class="auth-wrapper">
-  <div class="auth-card glass-card">
-    <div class="logo">
-      <h2>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
-          <path d="M12 2L2 7v10l10 5 10-5V7L12 2z"/>
-        </svg>
-        ExplorerFrame
-      </h2>
-      <p>Iniciar sesión</p>
-    </div>
-
-    {% if error %}
-    <div class="alert alert-error">{{ error }}</div>
-    {% endif %}
-
-    <form method="POST" action="/login/">
-      <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username"
-               placeholder="Tu nombre de usuario" required />
+  <div class="auth-card glass-card auth-split">
+    <!-- Panel izquierdo: Formulario -->
+    <div class="auth-panel auth-panel-left">
+      <div class="logo" style="text-align:center;margin-bottom:2rem;">
+        <h2 style="font-size:1.25rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+            <path d="M12 2L2 7v10l10 5 10-5V7L12 2z"/>
+          </svg>
+          Iniciar sesión
+        </h2>
+        <p style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.5rem;">Accede a tu cuenta</p>
       </div>
-      <div class="form-group">
-        <label for="password">Contraseña</label>
-        <input type="password" id="password" name="password"
-               placeholder="Tu contraseña" required />
-      </div>
-      <button type="submit" class="btn btn-primary btn-full">
-        Iniciar sesión →
-      </button>
-    </form>
 
-    <div class="telegram-login-wrapper">
-      <p class="telegram-label">O inicia sesión con:</p>
-      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
-        <div class="telegram-widget">
-          <script async src="https://telegram.org/js/telegram-widget.js?23"
-            data-telegram-login="explorerframebot"
-            data-size="large"
-            data-onauth="onTelegramAuth(user)"
-            data-request-access="write">
-          </script>
+      {% if error %}
+      <div class="alert alert-error">{{ error }}</div>
+      {% endif %}
+
+      <form method="POST" action="/login/">
+        <div class="form-group">
+          <label for="username">Usuario</label>
+          <input type="text" id="username" name="username"
+                 placeholder="Tu nombre de usuario" required />
         </div>
+        <div class="form-group">
+          <label for="password">Contraseña</label>
+          <input type="password" id="password" name="password"
+                 placeholder="Tu contraseña" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">
+          Iniciar sesión →
+        </button>
+      </form>
+
+      <div class="guest-link" style="text-align:center;margin-top:1.5rem;">
+        <a href="/dashboard/">Continuar como invitado →</a>
+      </div>
+
+      <div class="auth-footer" style="text-align:center;margin-top:1rem;">
+        ¿No tienes cuenta? <a href="/register/">Regístrate</a>
       </div>
     </div>
 
-    <div class="auth-divider">o</div>
+    <div class="auth-divider-v"></div>
 
-    <div class="social-login">
-      <a href="/github/" class="btn btn-outline" style="width:100%;justify-content:center;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <!-- Panel derecho: Social logins -->
+    <div class="auth-panel auth-panel-right">
+      <div class="logo" style="text-align:center;margin-bottom:1.5rem;">
+        <p style="font-size:0.85rem;color:var(--text-secondary);">Iniciar sesión con</p>
+      </div>
+
+      <p class="social-label">Métodos de autenticación rápida</p>
+
+      <div class="telegram-widget" style="margin-bottom:1rem;">
+        <script async src="https://telegram.org/js/telegram-widget.js?23"
+          data-telegram-login="explorerframebot"
+          data-size="medium"
+          data-onauth="onTelegramAuth(user)"
+          data-request-access="write">
+        </script>
+      </div>
+
+      <div class="social-btn github" onclick="window.location.href='/github/'">
+        <svg viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
         </svg>
-        Iniciar con GitHub
-      </a>
-    </div>
+        GitHub
+      </div>
 
-    <div class="guest-link">
-      <a href="/dashboard/">Continuar como invitado →</a>
-    </div>
-
-    <div class="auth-footer">
-      ¿No tienes cuenta? <a href="/register/">Regístrate</a>
+      <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--win-border);text-align:center;">
+        <p style="font-size:0.75rem;color:var(--text-tertiary);">Autenticación segura con encriptación de extremo a extremo</p>
+      </div>
     </div>
   </div>
 </div>
 
 <script type="text/javascript">
 function onTelegramAuth(user) {
-  // Mostrar información de la cuenta en la consola
   console.info('Datos de la cuenta:', {
     id: user.id,
     first_name: user.first_name,
@@ -101,7 +151,6 @@ function onTelegramAuth(user) {
     hash: user.hash
   });
 
-  // Enviar datos de Telegram al servidor
   fetch('/telegram-login/', {
     method: 'POST',
     headers: {
@@ -112,7 +161,6 @@ function onTelegramAuth(user) {
   .then(response => response.json())
   .then(data => {
     if (data.success) {
-      // Redirigir al dashboard
       window.location.href = '/dashboard/';
     } else {
       alert('Error: ' + (data.error || 'No se pudo iniciar sesión'));
