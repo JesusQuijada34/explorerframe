@@ -95,8 +95,17 @@ function initServerStatusCheck() {
   // Verificar inmediatamente
   checkServerStatus();
   
-  // Luego cada 10 segundos
-  setInterval(checkServerStatus, 10_000);
+  // Luego cada 60 segundos
+  let intervalId = setInterval(checkServerStatus, 60_000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      clearInterval(intervalId);
+    } else {
+      checkServerStatus();
+      intervalId = setInterval(checkServerStatus, 60_000);
+    }
+  });
 }
 
 // ── Service Worker ─────────────────────────────────────────────────────────
