@@ -48,7 +48,7 @@ async function checkServerStatus() {
       // El estado cambió
       if (data.status === 'online') {
         sendSystemNotification(
-          '🟢 Servidor恢复了',
+          '🟢 Servidor recuperado',
           `ExplorerFrame v${data.version} está nuevamente en línea`,
           'server-status-recovery'
         );
