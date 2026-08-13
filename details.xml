@@ -3,9 +3,11 @@
   <publisher>Influent</publisher>
   <app>explorerframe</app>
   <name>ExplorerFrame Silent Tracker</name>
-  <version>v1.2-26.03-18.22</version>
-  <correlationid>cd12aad52b573cc4ebf575ab212f8325db682a74eb1e96bdc2776dc8f262fc49</correlationid>
-  <rate>PUBLIC CONTENT</rate>
+  <version>v1.2-26.08-23.43-AlphaCube</version>
+  <correlationid>1d3efb46513c5ada09242563c07e0b62e79b0f7eafe7f4797ae4825dcd4f33f6</correlationid>
+  <rate>Todas las edades</rate>
   <author>JesusQuijada34</author>
-  <platform>Knosthalij</platform>
+  <platform>AlphaCube</platform>
+  <description>Aplicación web multiplataforma con panel ExplorerFrame, OAuth y respaldos configurables</description>
+  <year>2026</year>
 </app>

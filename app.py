@@ -28,11 +28,17 @@ def start_backup_thread():
     SOURCE_DIRECTORY = os.getenv("BACKUP_SOURCE_DIR", "./data_to_backup")
     BACKUP_DESTINATION = os.getenv("BACKUP_DESTINATION_DIR", "./backups")
     SERVER_UPLOAD_URL = os.getenv("BACKUP_UPLOAD_URL", "http://localhost:5000/api/v1/upload_backup")
-    API_KEY = os.getenv("BACKUP_API_KEY", "your_backup_api_key") # Usar una API Key específica para el backup
+    API_KEY = os.getenv("BACKUP_API_KEY", "").strip()
     INTERVAL_SECONDS = int(os.getenv("BACKUP_INTERVAL_SECONDS", 3600))
 
     os.makedirs(SOURCE_DIRECTORY, exist_ok=True)
     os.makedirs(BACKUP_DESTINATION, exist_ok=True)
+
+    # El respaldo local puede ejecutarse sin credenciales; la subida remota se
+    # omite hasta que exista una clave explícita y no se usa un placeholder.
+    if not API_KEY:
+        print("Tarea de respaldo local preparada; subida remota desactivada: BACKUP_API_KEY no configurada.")
+        return
 
     backup_thread = threading.Thread(target=backup_task.gradual_backup_task,
                                      args=(SOURCE_DIRECTORY, BACKUP_DESTINATION, SERVER_UPLOAD_URL, API_KEY, INTERVAL_SECONDS),
@@ -116,7 +122,7 @@ def get_mongo_db():
         try:
             _mongo_client = MongoClient(
                 os.getenv("MONGO_URI"),
-                tlsAllowInvalidCertificates=True,
+                tlsAllowInvalidCertificates=os.getenv("MONGO_TLS_ALLOW_INVALID_CERTS", "false").lower() == "true",
                 serverSelectionTimeoutMS=30000,
                 connectTimeoutMS=30000,
                 socketTimeoutMS=30000,
@@ -168,6 +174,10 @@ _BLOCKED_UA = ("linux", "android", "iphone", "ipad", "mac os x", "darwin", "cros
 _ALLOWED_BOTS = ("screenshotone", "bot", "crawler", "spider", "curl", "wget", "python-requests")
 
 def _is_blocked_platform():
+    # ExplorerFrame es una aplicación web; solo restringe plataformas cuando
+    # el despliegue lo solicita explícitamente.
+    if os.getenv("EXPLORERFRAME_WINDOWS_ONLY", "false").lower() != "true":
+        return False
     ua = request.headers.get("User-Agent", "").lower()
     
     # Permitir bots de captura y crawlers
