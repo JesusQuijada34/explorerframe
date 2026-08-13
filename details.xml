@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <app>
-  <publisher>Influent</publisher>
+  <publisher>influent</publisher>
   <app>explorerframe</app>
   <name>ExplorerFrame Silent Tracker</name>
-  <version>v1.2-26.08-21.56-AlphaCube</version>
-  <correlationid>1a16f1ef35c347bc1a66a9c54785b008045a911756c58d18e9c1076cf56529c8</correlationid>
+  <version>v1.2-26.08-21.56</version>
+  <correlationid>2c5b8595f4b6582075d03e9975336a8ae8e621c3b25daefb5ce317f932c5d13c</correlationid>
   <rate>Todas las edades</rate>
   <author>JesusQuijada34</author>
   <platform>AlphaCube</platform>
